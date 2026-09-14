@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "kit_version": "0.3.0",
+  "runtimes": {
+    "claude": {"status": "supported", "delivery": "native/plugin adapter"},
+    "codex": {"status": "supported", "delivery": ".codex + shared skills"},
+    "cursor": {"status": "supported", "delivery": ".cursor adapter"},
+    "gemini": {"status": "supported", "delivery": ".agents/skills + .gemini adapter"},
+    "opencode": {"status": "supported", "delivery": ".agents/skills + .opencode adapter"},
+    "grok": {"status": "supported", "delivery": ".grok/skills + .grok/agents + optional Claude-compatible surfaces"},
+    "antigravity": {"status": "supported", "delivery": "workspace/global skills + allowlisted agents; headless discovery uses --add-dir; hooks unsupported"},
+    "deepseek-harness": {"status": "unsupported", "delivery": "excluded from AgentKit release"},
+    "omp": {"status": "supported", "delivery": ".agents/skills + native .omp adapter (Pi-based OMP)"}
+  },
+  "aliases": {
+    "agy": "antigravity",
+    "antigravity-cli": "antigravity",
+    "dsh": "deepseek-harness",
+    "deepseek": "deepseek-harness",
+    "pi": "omp"
+  }
+}
