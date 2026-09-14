@@ -1,0 +1,87 @@
+# CampusUTE — local development stack
+# Profiles:
+#   core      — everything the app needs (default for development)
+#   analytics — optional big-data stack (Kafka/ClickHouse/Grafana), Phase 7
+#
+# Usage:
+#   docker compose --profile core up -d
+#   docker compose --profile analytics up -d
+#
+# backend & ai-service images are built from Phase 1 onward; until then the
+# data layer below already runs standalone.
+
+name: campusute
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: campusute-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-campusute}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campusute_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-campusute}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-campusute} -d ${POSTGRES_DB:-campusute}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: campusute-redis
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    container_name: campusute-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-minioadmin}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # ---- Phase 1: uncommented when images exist ----
+  # backend:
+  #   build: ./backend
+  #   container_name: campusute-backend
+  #   env_file: .env
+  #   ports: ["8080:8080"]
+  #   depends_on:
+  #     postgres: { condition: service_healthy }
+  #     redis: { condition: service_healthy }
+  #
+  # ai-service:
+  #   build: ./ai-service
+  #   container_name: campusute-ai
+  #   env_file: .env
+  #   ports: ["8600:8600"]
+  #   depends_on:
+  #     postgres: { condition: service_healthy }
+
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:

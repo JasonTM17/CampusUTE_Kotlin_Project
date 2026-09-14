@@ -1,0 +1,62 @@
+# ===== CampusUTE .gitignore =====
+# Sensitive / local-only (user requirement: plans & secrets NEVER committed)
+plans/
+*.env
+.env
+.env.*
+!.env.example
+local.properties
+*.jks
+*.keystore
+*.pem
+*.p12
+*.mobileprovision
+secrets/
+credentials.json
+google-services.json.release
+
+# AgentKit runtime state (plans + session state stay local)
+.agentkit/plans.db
+.agentkit/*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+reports/eval/*.local.md
+
+# Node / tooling caches
+node_modules/
+stitch-exports/
+.video_agent/
+.mimosa/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+build/
+.build/
+dist/
+out/
+*.apk.idsig
+capture/
+captures/
+screenshots/local/
+docs/diagrams/render/*.local.png
+
+# Logs
+*.log
+logs/

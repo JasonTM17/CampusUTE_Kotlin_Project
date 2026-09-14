@@ -1,0 +1,32 @@
+name: repo-guard
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  guard:
+    name: Security & structure gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sensitive-path ignore gate (plans/, .env, keystores)
+        run: |
+          git check-ignore -v plans/README.md .env local.properties release.jks
+          echo "ignore-gate: PASS"
+
+      - name: Secret scan
+        run: bash scripts/secret-scan.sh
+
+      - name: Compose file validation
+        run: docker compose -f docker-compose.yml config -q && echo "compose-config: PASS"
+
+      - name: Markdown link sanity (repo-relative docs exist)
+        run: |
+          missing=0
+          for link in $(grep -oE '\]\((docs|scripts|assets)/[^)#]+' README.md | sed 's/](//' | sort -u); do
+            if [ ! -e "$link" ]; then echo "MISSING: $link"; missing=$((missing+1)); fi
+          done
+          [ "$missing" -eq 0 ] && echo "links: PASS" || exit 1
