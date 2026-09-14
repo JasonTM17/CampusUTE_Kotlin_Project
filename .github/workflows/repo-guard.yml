@@ -21,7 +21,9 @@ jobs:
         run: bash scripts/secret-scan.sh
 
       - name: Compose file validation
-        run: docker compose -f docker-compose.yml config -q && echo "compose-config: PASS"
+        run: |
+          docker compose -f docker-compose.yml config -q
+          echo "compose-config: PASS"
 
       - name: Markdown link sanity (repo-relative docs exist)
         run: |
