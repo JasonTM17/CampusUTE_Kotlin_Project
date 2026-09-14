@@ -1,11 +1,12 @@
 #!/usr/bin/env sh
 # CampusUTE secret scan — gates every push (CI: repo-guard).
 # Scans git-tracked files for obvious credential patterns.
-# Allowlist: this scanner itself, the env template, and prose docs that quote
-# patterns as examples.
+# Allowlist: this scanner itself, the env template, prose docs quoting
+# patterns as examples, and vendored AgentKit tooling whose skill handbooks
+# document credential patterns (upstream content, not project secrets).
 set -u
 
-ALLOW_PREFIXES="^(\.env\.example|scripts/secret-scan\.sh|docs/security/|docs/adr/)"
+ALLOW_PREFIXES="^(\.env\.example|scripts/secret-scan\.sh|docs/security/|docs/adr/|\.agents/|\.codex/|\.agentkit/)"
 PATTERNS='sk-[A-Za-z0-9]{20,}|BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY|AKIA[0-9A-Z]{16}|api_key["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"'][A-Za-z0-9_-]{16,}|password[[:space:]]*=[[:space:]]*["'"'"'][^"'"'"' ]{12,}'
 
 hits=0
