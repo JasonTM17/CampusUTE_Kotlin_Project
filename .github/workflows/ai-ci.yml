@@ -1,0 +1,23 @@
+name: ai-ci
+
+on:
+  push:
+    paths: ["ai-service/**", ".github/workflows/ai-ci.yml"]
+  pull_request:
+    paths: ["ai-service/**"]
+
+jobs:
+  test:
+    name: pytest (mock mode, no keys)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        working-directory: ai-service
+        run: pip install -r requirements.txt
+      - name: Run tests
+        working-directory: ai-service
+        run: python -m pytest tests/ -q
