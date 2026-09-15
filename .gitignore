@@ -46,6 +46,9 @@ stitch-exports/
 .DS_Store
 Thumbs.db
 
+# Local proof artifacts
+.tmp/
+
 # Build outputs
 build/
 .gradle/

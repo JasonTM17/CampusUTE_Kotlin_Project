@@ -63,23 +63,31 @@ services:
       timeout: 3s
       retries: 20
 
-  # ---- Phase 1: uncommented when images exist ----
-  # backend:
-  #   build: ./backend
-  #   container_name: campusute-backend
-  #   env_file: .env
-  #   ports: ["8080:8080"]
-  #   depends_on:
-  #     postgres: { condition: service_healthy }
-  #     redis: { condition: service_healthy }
-  #
-  # ai-service:
-  #   build: ./ai-service
-  #   container_name: campusute-ai
-  #   env_file: .env
-  #   ports: ["8600:8600"]
-  #   depends_on:
-  #     postgres: { condition: service_healthy }
+  # ---- Phase 1: backend platform + AI skeleton (K3) ----
+  backend:
+    build: ./backend
+    container_name: campusute-backend
+    environment:
+      DATABASE_JDBC_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-campusute}
+      POSTGRES_USER: ${POSTGRES_USER:-campusute}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campusute_dev}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-32-bytes-minimum!!}
+      APP_DEMO_MODE: ${APP_DEMO_MODE:-true}
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  ai-service:
+    build: ./ai-service
+    container_name: campusute-ai
+    ports:
+      - "${AI_PORT:-8600}:8600"
 
 volumes:
   pg_data:
