@@ -17,4 +17,10 @@ interface CampusApi {
 
     @GET("me")
     suspend fun me(): ApiEnvelopeDto<UserDto>
+
+    @GET("schedule/sessions")
+    suspend fun scheduleSessions(
+        @retrofit2.http.Query("from") from: String,
+        @retrofit2.http.Query("to") to: String,
+    ): ApiEnvelopeDto<List<ScheduleSessionDto>>
 }

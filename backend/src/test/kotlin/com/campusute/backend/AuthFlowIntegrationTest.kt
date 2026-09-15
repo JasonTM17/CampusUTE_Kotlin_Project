@@ -116,6 +116,52 @@ class AuthFlowIntegrationTest {
         assertEquals(listOf("STUDENT"), user["roles"])
     }
 
+    @Test
+    @Order(6)
+    fun `schedule returns only own sessions with conflict metadata`() {
+        val headers = authHeaders(login().data!!["accessToken"].toString())
+        val monday = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY)
+        val response = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/schedule/sessions?from=$monday&to=${monday.plusDays(6)}",
+            HttpMethod.GET,
+            HttpEntity<Void>(headers),
+        )
+        assertEquals(200, response.statusCode.value(), response.body.toString())
+        val body = envelope(response.body)
+        @Suppress("UNCHECKED_CAST")
+        val sessions = body.data as List<Map<String, Any?>>
+        assertTrue(sessions.isNotEmpty(), "seeded demo student must have sessions this week")
+        val seededCodes = setOf("SE104", "DBMS311", "NET325", "OS321", "AI410")
+        assertTrue(sessions.all { (it["courseCode"] as String) in seededCodes }, "ownership scoping")
+        assertEquals(true, body.meta["conflict"], "deliberate Tuesday overlap must flag conflict")
+    }
+
+    @Test
+    @Order(7)
+    fun `lecturer sees no student schedule (scope by enrollment)`() {
+        val lecturer = rawLogin("lecturer@demo.campusute.vn", "Demo#Lecturer1")
+        val headers = authHeaders(lecturer["accessToken"].toString())
+        val monday = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY)
+        val response = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/schedule/sessions?from=$monday&to=${monday.plusDays(6)}",
+            HttpMethod.GET,
+            HttpEntity<Void>(headers),
+        )
+        assertEquals(200, response.statusCode.value())
+        @Suppress("UNCHECKED_CAST")
+        val sessions = envelope(response.body).data as List<Map<String, Any?>>
+        assertTrue(sessions.isEmpty(), "lecturer has no enrollments -> empty, never other users' data")
+    }
+
+    private fun rawLogin(email: String, password: String): Map<String, Any?> {
+        val response = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/auth/login",
+            HttpMethod.POST,
+            jsonEntity("""{"email":"$email","password":"$password"}"""),
+        )
+        return envelope(response.body).data!!
+    }
+
     private fun login(): ApiEnvelope<Map<String, Any?>> =
         envelope(
             rawPost("""{"email":"student@demo.campusute.vn","password":"Demo#Student1"}""").body,

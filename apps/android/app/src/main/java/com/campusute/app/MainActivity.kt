@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.campusute.app.core.designsystem.theme.CampusTheme
+import com.campusute.app.core.data.SessionRepository
 import com.campusute.app.core.security.TokenStore
 import com.campusute.app.feature.appshell.CampusApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -17,6 +18,9 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var tokenStore: TokenStore
+
+    @Inject
+    lateinit var sessionRepository: SessionRepository
 
     private var signedIn by mutableStateOf(false)
 
@@ -29,6 +33,7 @@ class MainActivity : ComponentActivity() {
                     signedIn = signedIn,
                     onSessionEnded = { signedIn = false },
                     onSessionStarted = { signedIn = true },
+                    sessionRepository = sessionRepository,
                 )
             }
         }

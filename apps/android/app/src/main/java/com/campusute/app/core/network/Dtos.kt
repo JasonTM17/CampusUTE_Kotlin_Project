@@ -11,12 +11,13 @@ data class ApiErrorDto(
 
 /**
  * Mirrors the frozen backend contract (packages/api-contracts/openapi.json):
- * every response is {data, meta, error}.
+ * every response is {data, meta, error}. meta values are heterogeneous
+ * (booleans, numbers) so they ride as generic JSON elements.
  */
 @Serializable
 data class ApiEnvelopeDto<T>(
     val data: T? = null,
-    val meta: Map<String, String> = emptyMap(),
+    val meta: Map<String, kotlinx.serialization.json.JsonElement> = emptyMap(),
     val error: ApiErrorDto? = null,
 )
 
@@ -42,4 +43,18 @@ data class TokenResponseDto(
     val refreshToken: String,
     val expiresInMinutes: Long,
     val user: UserDto,
+)
+
+@Serializable
+data class ScheduleSessionDto(
+    val id: String,
+    val courseCode: String,
+    val courseName: String,
+    val lecturerName: String,
+    val building: String,
+    val room: String,
+    val date: String,
+    val startAt: String,
+    val endAt: String,
+    val conflict: Boolean = false,
 )

@@ -50,6 +50,10 @@ class LoginViewModelTest {
         override suspend fun refresh(body: RefreshRequestDto) = TODO()
         override suspend fun logout(body: RefreshRequestDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
         override suspend fun me() = ApiEnvelopeDto(data = user)
+        override suspend fun scheduleSessions(
+            from: String,
+            to: String,
+        ): ApiEnvelopeDto<List<com.campusute.app.core.network.ScheduleSessionDto>> = ApiEnvelopeDto(data = emptyList())
     }
 
     private fun viewModel(api: CampusApi, store: TokenStore) =
