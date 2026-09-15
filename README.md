@@ -111,8 +111,8 @@ docker compose --profile core up -d  # postgres+pgvector, redis, minio, backend,
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Environment gate, bootstrap, CI guard | ✅ DONE |
-| 1 | Backend platform + Android core + **contract freeze** | 🔜 PLANNED |
-| 2 | Vertical slice: Student Schedule E2E (offline) | PLANNED |
+| 1 | Backend platform + Android core + **contract freeze** | ✅ DONE |
+| 2 | Vertical slice: Student Schedule E2E (offline) | ✅ DONE |
 | 3 | Generic sync engine (delta, pending queue, optimistic) | PLANNED |
 | 4 | Academic core (assignment, grade/GPA, QR attendance, events) | PLANNED |
 | 5 | AI core: agents + RAG + citations | PLANNED |
