@@ -121,15 +121,14 @@ class AuthFlowIntegrationTest {
     fun `schedule returns only own sessions with conflict metadata`() {
         val headers = authHeaders(login().data!!["accessToken"].toString())
         val monday = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY)
-        val response = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+        val response = rest.exchange<ApiEnvelope<List<Map<String, Any?>>>>(
             "/api/v1/schedule/sessions?from=$monday&to=${monday.plusDays(6)}",
             HttpMethod.GET,
             HttpEntity<Void>(headers),
         )
         assertEquals(200, response.statusCode.value(), response.body.toString())
-        val body = envelope(response.body)
-        @Suppress("UNCHECKED_CAST")
-        val sessions = body.data as List<Map<String, Any?>>
+        val body = envelopeList(response.body)
+        val sessions = body.data!!
         assertTrue(sessions.isNotEmpty(), "seeded demo student must have sessions this week")
         val seededCodes = setOf("SE104", "DBMS311", "NET325", "OS321", "AI410")
         assertTrue(sessions.all { (it["courseCode"] as String) in seededCodes }, "ownership scoping")
@@ -142,15 +141,19 @@ class AuthFlowIntegrationTest {
         val lecturer = rawLogin("lecturer@demo.campusute.vn", "Demo#Lecturer1")
         val headers = authHeaders(lecturer["accessToken"].toString())
         val monday = java.time.LocalDate.now().with(java.time.DayOfWeek.MONDAY)
-        val response = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+        val response = rest.exchange<ApiEnvelope<List<Map<String, Any?>>>>(
             "/api/v1/schedule/sessions?from=$monday&to=${monday.plusDays(6)}",
             HttpMethod.GET,
             HttpEntity<Void>(headers),
         )
         assertEquals(200, response.statusCode.value())
-        @Suppress("UNCHECKED_CAST")
-        val sessions = envelope(response.body).data as List<Map<String, Any?>>
+        val sessions = envelopeList(response.body).data!!
         assertTrue(sessions.isEmpty(), "lecturer has no enrollments -> empty, never other users' data")
+    }
+
+    private fun envelopeList(body: Any?): ApiEnvelope<List<Map<String, Any?>>> {
+        @Suppress("UNCHECKED_CAST")
+        return body as ApiEnvelope<List<Map<String, Any?>>>
     }
 
     private fun rawLogin(email: String, password: String): Map<String, Any?> {
