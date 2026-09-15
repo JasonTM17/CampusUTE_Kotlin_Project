@@ -54,6 +54,10 @@ class LoginViewModelTest {
             from: String,
             to: String,
         ): ApiEnvelopeDto<List<com.campusute.app.core.network.ScheduleSessionDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun taskChanges(since: String): ApiEnvelopeDto<com.campusute.app.core.network.TaskChangesDto> =
+            ApiEnvelopeDto(data = com.campusute.app.core.network.TaskChangesDto(emptyList(), "1970-01-01T00:00:00Z"))
+        override suspend fun taskSync(body: com.campusute.app.core.network.SyncRequestDto): ApiEnvelopeDto<com.campusute.app.core.network.SyncResponseDto> =
+            ApiEnvelopeDto(data = com.campusute.app.core.network.SyncResponseDto(emptyList(), "1970-01-01T00:00:00Z"))
     }
 
     private fun viewModel(api: CampusApi, store: TokenStore) =

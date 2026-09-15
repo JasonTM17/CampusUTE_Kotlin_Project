@@ -156,6 +156,52 @@ class AuthFlowIntegrationTest {
         return body as ApiEnvelope<List<Map<String, Any?>>>
     }
 
+    @Test
+    @Order(8)
+    fun `sync engine replay idempotency conflict and delta`() {
+        val headers = authHeaders(login().data!!["accessToken"].toString())
+        fun postJson(path: String, json: String) =
+            rest.exchange<ApiEnvelope<Map<String, Any?>>>(path, HttpMethod.POST, HttpEntity(json, headers))
+
+        // CREATE + offline replay of the SAME clientOpId -> 1 row only
+        val op = """{"clientOpId":"op-001","opType":"CREATE","title":"Ôn JOIN","dueDate":"2026-10-01"}"""
+        val first = postJson("/api/v1/tasks/sync", """{"operations":[$op]}""")
+        assertEquals(200, first.statusCode.value(), first.body.toString())
+        assertEquals("APPLIED", (first.body!!.data!!["results"] as List<*>).first().let { (it as Map<*, *>)["status"] })
+        val replay = postJson("/api/v1/tasks/sync", """{"operations":[$op]}""")
+        val replayStatus = (replay.body!!.data!!["results"] as List<*>).first().let { (it as Map<*, *>)["status"] }
+        assertEquals("DUPLICATE", replayStatus, "replayed create must be a no-op duplicate")
+
+        // Delta: only the NEW task comes back
+        val since = java.time.Instant.now().minusSeconds(3600)
+        val changes = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/tasks/changes?since=$since",
+            HttpMethod.GET,
+            HttpEntity<Void>(headers),
+        )
+        @Suppress("UNCHECKED_CAST")
+        val changesList = changes.body!!.data!!["changes"] as List<Map<String, Any?>>
+        assertEquals(1, changesList.size)
+        val taskId = changesList[0]["id"] as String
+        val version = (changesList[0]["version"] as Number).toLong()
+
+        // UPDATE with a STALE baseVersion -> CONFLICT, server state returned
+        val stale = postJson(
+            "/api/v1/tasks/sync",
+            """{"operations":[{"clientOpId":"op-002","opType":"UPDATE","taskId":"$taskId","baseVersion":${version + 5},"done":true}]}""",
+        )
+        val conflictStatus = (stale.body!!.data!!["results"] as List<*>).first().let { (it as Map<*, *>)["status"] }
+        assertEquals("CONFLICT", conflictStatus, "stale baseVersion must yield server-win conflict")
+
+        // UPDATE with the correct version -> APPLIED and version bumps
+        val good = postJson(
+            "/api/v1/tasks/sync",
+            """{"operations":[{"clientOpId":"op-003","opType":"UPDATE","taskId":"$taskId","baseVersion":$version,"done":true}]}""",
+        )
+        val applied = (good.body!!.data!!["results"] as List<*>).first().let { (it as Map<*, *>)["status"] }
+        assertEquals("APPLIED", applied)
+    }
+
     private fun rawLogin(email: String, password: String): Map<String, Any?> {
         val response = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
             "/api/v1/auth/login",

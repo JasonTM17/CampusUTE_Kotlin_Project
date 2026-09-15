@@ -23,4 +23,12 @@ interface CampusApi {
         @retrofit2.http.Query("from") from: String,
         @retrofit2.http.Query("to") to: String,
     ): ApiEnvelopeDto<List<ScheduleSessionDto>>
+
+    @GET("tasks/changes")
+    suspend fun taskChanges(
+        @retrofit2.http.Query("since") since: String,
+    ): ApiEnvelopeDto<TaskChangesDto>
+
+    @POST("tasks/sync")
+    suspend fun taskSync(@Body body: SyncRequestDto): ApiEnvelopeDto<SyncResponseDto>
 }

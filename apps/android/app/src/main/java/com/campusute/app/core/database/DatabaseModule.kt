@@ -22,4 +22,13 @@ object DatabaseModule {
 
     @Provides
     fun scheduleSessionDao(db: CampusDatabase): ScheduleSessionDao = db.scheduleSessionDao()
+
+    @Provides
+    fun studyTaskDao(db: CampusDatabase): StudyTaskDao = db.studyTaskDao()
+
+    @Provides
+    fun pendingOpDao(db: CampusDatabase): PendingOpDao = db.pendingOpDao()
+
+    @Provides
+    fun syncStateDao(db: CampusDatabase): SyncStateDao = db.syncStateDao()
 }

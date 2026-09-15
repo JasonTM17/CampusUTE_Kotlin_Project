@@ -58,3 +58,43 @@ data class ScheduleSessionDto(
     val endAt: String,
     val conflict: Boolean = false,
 )
+
+// ---- task sync contract (Phase 3) ----
+
+@Serializable
+data class TaskDto(
+    val id: String,
+    val title: String,
+    val dueDate: String? = null,
+    val done: Boolean = false,
+    val deleted: Boolean = false,
+    val version: Long = 1,
+    val updatedAt: String,
+)
+
+@Serializable
+data class PushOperationDto(
+    val clientOpId: String,
+    val opType: String,
+    val taskId: String? = null,
+    val baseVersion: Long? = null,
+    val title: String? = null,
+    val dueDate: String? = null,
+    val done: Boolean? = null,
+)
+
+@Serializable
+data class SyncRequestDto(val operations: List<PushOperationDto>)
+
+@Serializable
+data class OpResultDto(
+    val clientOpId: String,
+    val status: String,
+    val task: TaskDto? = null,
+)
+
+@Serializable
+data class SyncResponseDto(val results: List<OpResultDto>, val serverTime: String)
+
+@Serializable
+data class TaskChangesDto(val changes: List<TaskDto>, val serverTime: String)
