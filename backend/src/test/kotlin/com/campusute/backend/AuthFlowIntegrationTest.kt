@@ -159,7 +159,9 @@ class AuthFlowIntegrationTest {
     @Test
     @Order(8)
     fun `sync engine replay idempotency conflict and delta`() {
-        val headers = authHeaders(login().data!!["accessToken"].toString())
+        val headers = authHeaders(login().data!!["accessToken"].toString()).apply {
+            contentType = MediaType.APPLICATION_JSON
+        }
         fun postJson(path: String, json: String) =
             rest.exchange<ApiEnvelope<Map<String, Any?>>>(path, HttpMethod.POST, HttpEntity(json, headers))
 
