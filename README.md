@@ -115,7 +115,7 @@ docker compose --profile core up -d  # postgres+pgvector, redis, minio, backend,
 | 2 | Vertical slice: Student Schedule E2E (offline) | ✅ DONE |
 | 3 | Generic sync engine (delta, pending queue, optimistic) | ✅ DONE |
 | 4 | Academic core (assignment, grade/GPA, QR attendance, events) | 🔜 PLANNED |
-| 5 | AI core: agents + RAG + citations | PLANNED |
+| 5 | AI core: agents + RAG + citations | 🔜 PLANNED |
 | 6 | 8 agents + eval harness + notes AI | PLANNED |
 | 7 | Secondary modules + Kafka/ClickHouse analytics | PLANNED |
 | 8 | Hardening, docs, demo GIF, release v1.0.0 | PLANNED |
