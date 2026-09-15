@@ -78,11 +78,11 @@ class AuthFlowIntegrationTest {
 
         // Presenting the OLD (rotated) token = reuse -> 401 + all sessions revoked
         val reuse = rawPost("""{"refreshToken":"${first["refreshToken"]}"}""")
-        assertEquals(401, reuse.statusCode.value())
+        assertEquals(401, reuse.statusCode.value(), "reuse of rotated token must 401, got ${reuse.statusCode}: ${reuse.body}")
 
         // Even the newest token is dead because of the theft response
         val newest = rawPost("""{"refreshToken":"${newTokens["refreshToken"]}"}""")
-        assertEquals(401, newest.statusCode.value())
+        assertEquals(401, newest.statusCode.value(), "session must die after reuse detection, got ${newest.statusCode}: ${newest.body}")
     }
 
     @Test
@@ -98,14 +98,12 @@ class AuthFlowIntegrationTest {
     fun `error envelope carries code message traceId and null data`() {
         val response = rawPost("""{"email":"nobody@x.vn","password":"wrong"}""")
         assertEquals(401, response.statusCode.value())
-        @Suppress("UNCHECKED_CAST")
-        val body = response.body as Map<String, Any?>
-        @Suppress("UNCHECKED_CAST")
-        val error = body["error"] as Map<String, Any?>
-        assertEquals("AUTH_INVALID_CREDENTIALS", error["code"])
-        assertNotNull(error["message"])
-        assertNotNull(error["traceId"], "traceId must propagate into error envelope")
-        assertEquals(null, body["data"])
+        val body = envelope(response.body)
+        val error = body.error!!
+        assertEquals("AUTH_INVALID_CREDENTIALS", error.code)
+        assertNotNull(error.message)
+        assertNotNull(error.traceId, "traceId must propagate into error envelope")
+        assertEquals(null, body.data)
     }
 
     @Test
