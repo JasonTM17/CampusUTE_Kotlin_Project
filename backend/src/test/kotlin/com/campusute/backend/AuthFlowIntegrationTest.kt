@@ -53,6 +53,12 @@ class AuthFlowIntegrationTest {
     @Autowired
     lateinit var rest: TestRestTemplate
 
+    @org.springframework.beans.factory.annotation.Autowired
+    lateinit var sectionsRepo: com.campusute.backend.academic.ClassSectionRepository
+
+    @org.springframework.beans.factory.annotation.Autowired
+    lateinit var eventsRepo: com.campusute.backend.academic.EventRepository
+
     @Test
     @Order(1)
     fun `login returns access and refresh tokens`() {
@@ -202,6 +208,98 @@ class AuthFlowIntegrationTest {
         )
         val applied = (good.body!!.data!!["results"] as List<*>).first().let { (it as Map<*, *>)["status"] }
         assertEquals("APPLIED", applied)
+    }
+
+    @Test
+    @Order(9)
+    fun `attendance rejects replay expiry outsider and accepts fresh scan`() {
+        val section = sectionsRepo.findAll().first()
+        val lecturerLogin = rawLogin("lecturer@demo.campusute.vn", "Demo#Lecturer1")
+        val lecturerHeaders = authHeaders(lecturerLogin["accessToken"].toString()).apply {
+            contentType = MediaType.APPLICATION_JSON
+        }
+        val created = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/attendance/sessions",
+            HttpMethod.POST,
+            HttpEntity("""{"sectionId":"${section.id}"}""", lecturerHeaders),
+        )
+        assertEquals(200, created.statusCode.value(), created.body.toString())
+        val sessionId = created.body!!.data!!["sessionId"] as String
+        val secret = created.body!!.data!!["secret"] as String
+
+        val studentHeaders = authHeaders(login().data!!["accessToken"].toString()).apply {
+            contentType = MediaType.APPLICATION_JSON
+        }
+        val bucket = java.time.Instant.now().epochSecond / 30
+        val payload = com.campusute.backend.academic.AttendanceService.encodePayload(
+            java.util.UUID.fromString(sessionId),
+            bucket,
+            com.campusute.backend.academic.AttendanceService.signature(secret, java.util.UUID.fromString(sessionId), bucket),
+        )
+
+        fun scan(nonce: String, payloadOverride: String = payload) =
+            rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+                "/api/v1/attendance/scan",
+                HttpMethod.POST,
+                HttpEntity("""{"payload":"$payloadOverride","nonce":"$nonce"}""", studentHeaders),
+            )
+
+        // Fresh scan accepted; duplicate scan of the same session rejected
+        assertEquals(200, scan("nonce-1").statusCode.value())
+        assertTrue(scan("nonce-2").body!!.error!!.message!!.contains("đã điểm danh"))
+
+        // Replay of an old nonce blocked
+        val replay = scan("nonce-1")
+        assertTrue(replay.body!!.error!!.message!!.contains("anti-replay") || replay.body!!.error!!.message!!.contains("đã"), )
+
+        // Stale bucket (older than ±1 window) rejected as expired
+        val stalePayload = com.campusute.backend.academic.AttendanceService.encodePayload(
+            java.util.UUID.fromString(sessionId),
+            bucket - 5,
+            com.campusute.backend.academic.AttendanceService.signature(secret, java.util.UUID.fromString(sessionId), bucket - 5),
+        )
+        val expired = scan("nonce-3", stalePayload)
+        assertTrue(expired.body!!.error!!.message!!.contains("hết hạn"), expired.body.toString())
+
+        // Present count visible to lecturer
+        val count = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/attendance/sessions/$sessionId/count",
+            HttpMethod.GET,
+            HttpEntity<Void>(lecturerHeaders),
+        )
+        assertEquals(1L, (count.body!!.data!!["present"] as Number).toLong())
+    }
+
+    @Test
+    @Order(10)
+    fun `event registration is idempotent per key`() {
+        val headers = authHeaders(login().data!!["accessToken"].toString())
+        val event = eventsRepo.findByCode("EVT-2026-AI-SEM")!!
+        val first = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/events/${event.id}/register",
+            HttpMethod.POST,
+            jsonEntityWith(headers, "idempotent-key-1"),
+        )
+        assertEquals(200, first.statusCode.value(), first.body.toString())
+        val second = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/events/${event.id}/register",
+            HttpMethod.POST,
+            jsonEntityWith(headers, "idempotent-key-1"),
+        )
+        assertEquals(
+            first.body!!.data!!["registrationId"],
+            second.body!!.data!!["registrationId"],
+            "same Idempotency-Key must return the same registration",
+        )
+    }
+
+    private fun jsonEntityWith(base: HttpHeaders, key: String): HttpEntity<String> {
+        val headers = HttpHeaders().apply {
+            contentType = MediaType.APPLICATION_JSON
+            putAll(base)
+            set("Idempotency-Key", key)
+        }
+        return HttpEntity("{}", headers)
     }
 
     private fun rawLogin(email: String, password: String): Map<String, Any?> {

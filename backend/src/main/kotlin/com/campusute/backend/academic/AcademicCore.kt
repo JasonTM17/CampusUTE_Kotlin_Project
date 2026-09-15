@@ -102,7 +102,9 @@ class EventRegistration(
     @Column(name = "idempotency_key", nullable = false) val idempotencyKey: String,
 )
 
-interface EventRepository : JpaRepository<CampusEvent, UUID>
+interface EventRepository : JpaRepository<CampusEvent, UUID> {
+    fun findByCode(code: String): CampusEvent?
+}
 interface EventRegistrationRepository : JpaRepository<EventRegistration, UUID> {
     fun findByStudentIdAndIdempotencyKey(studentId: UUID, key: String): EventRegistration?
     fun findByEventIdAndStudentId(eventId: UUID, studentId: UUID): EventRegistration?
