@@ -60,9 +60,10 @@ class DemoDataSeeder(
         // Flyway seed runs before demo users exist, so the demo student's
         // enrollments are (re)created here — idempotent, fresh-DB safe.
         users.findByEmailIgnoreCase("student@demo.campusute.vn")?.let { student ->
-            if (enrollments.findByStudentId(student.id).isEmpty()) {
+            val studentId = requireNotNull(student.id)
+            if (enrollments.findByStudentId(studentId).isEmpty()) {
                 enrollments.saveAll(
-                    sections.findAll().map { section -> Enrollment(studentId = student.id, classSectionId = section.id) },
+                    sections.findAll().map { section -> Enrollment(studentId = studentId, classSectionId = section.id) },
                 )
                 log.info("seeded demo enrollments for {}", student.email)
             }
