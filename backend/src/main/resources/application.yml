@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: campusute-backend
+  datasource:
+    url: ${DATABASE_JDBC_URL:jdbc:postgresql://localhost:5432/campusute}
+    username: ${POSTGRES_USER:campusute}
+    password: ${POSTGRES_PASSWORD:campusute_dev}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 1s
+      timeout: 1s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+app:
+  demo-mode: ${APP_DEMO_MODE:true}
+  jwt:
+    # 32+ bytes required by HS256; real value injected via env, never committed
+    secret: ${JWT_SECRET:dev-only-secret-change-me-32-bytes-minimum!!}
+    access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
+  refresh-ttl-days: ${REFRESH_TTL_DAYS:14}
+  login-rate-limit-per-minute: ${LOGIN_RATE_LIMIT:10}
+
+logging:
+  pattern:
+    console: "%d{HH:mm:ss.SSS} %-5level [traceId=%X{traceId}] [%thread] %logger{40} - %msg%n"

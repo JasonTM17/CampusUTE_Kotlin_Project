@@ -1,0 +1,57 @@
+package com.campusute.backend.auth
+
+import com.campusute.backend.audit.AuditService
+import com.campusute.backend.config.AppProperties
+import org.slf4j.LoggerFactory
+import org.springframework.boot.ApplicationArguments
+import org.springframework.boot.ApplicationRunner
+import org.springframework.security.crypto.password.PasswordEncoder
+import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
+
+/**
+ * Seeds synthetic demo identities when app.demo-mode=true (dev only — the
+ * production profile disables it). All credentials below are FAKE and exist
+ * solely so the app is demo-ready without real HCMUTE data.
+ */
+@Component
+class DemoDataSeeder(
+    private val users: UserRepository,
+    private val roles: RoleRepository,
+    private val passwordEncoder: PasswordEncoder,
+    private val props: AppProperties,
+    private val audit: AuditService,
+) : ApplicationRunner {
+
+    private val log = LoggerFactory.getLogger(DemoDataSeeder::class.java)
+
+    data class DemoAccount(val email: String, val password: String, val role: String, val name: String, val studentCode: String? = null)
+
+    @Transactional
+    override fun run(args: ApplicationArguments) {
+        if (!props.demoMode) return
+
+        val accounts = listOf(
+            DemoAccount("student@demo.campusute.vn", "Demo#Student1", "STUDENT", "Nguyễn Văn Sơn", "21110101"),
+            DemoAccount("lecturer@demo.campusute.vn", "Demo#Lecturer1", "LECTURER", "Trần Thị Bích", null),
+            DemoAccount("admin@demo.campusute.vn", "Demo#Admin1", "ADMIN", "System Administrator", null),
+        )
+
+        for (account in accounts) {
+            if (users.findByEmailIgnoreCase(account.email) != null) continue
+            val role = roles.findByName(account.role) ?: continue
+            users.save(
+                User(
+                    email = account.email,
+                    passwordHash = passwordEncoder.encode(account.password),
+                    fullName = account.name,
+                    studentCode = account.studentCode,
+                    department = if (account.role == "STUDENT") "Công nghệ Thông tin" else null,
+                    roles = mutableSetOf(role),
+                ),
+            )
+            log.info("seeded demo account: {} ({})", account.email, account.role)
+        }
+        audit.record(null, "SEED_DEMO", "users")
+    }
+}
