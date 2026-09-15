@@ -79,4 +79,6 @@ interface ScheduleSessionRepository : JpaRepository<ScheduleSession, UUID> {
 interface EnrollmentRepository : JpaRepository<Enrollment, UUID> {
     @Query("SELECT e.classSectionId FROM Enrollment e WHERE e.studentId = :studentId")
     fun sectionIdsOfStudent(@Param("studentId") studentId: UUID): List<UUID>
+
+    fun findByStudentId(studentId: UUID): List<Enrollment>
 }

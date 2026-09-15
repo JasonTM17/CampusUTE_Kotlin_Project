@@ -1,5 +1,8 @@
 package com.campusute.backend.auth
 
+import com.campusute.backend.academic.ClassSectionRepository
+import com.campusute.backend.academic.Enrollment
+import com.campusute.backend.academic.EnrollmentRepository
 import com.campusute.backend.audit.AuditService
 import com.campusute.backend.config.AppProperties
 import org.slf4j.LoggerFactory
@@ -21,6 +24,8 @@ class DemoDataSeeder(
     private val passwordEncoder: PasswordEncoder,
     private val props: AppProperties,
     private val audit: AuditService,
+    private val sections: ClassSectionRepository,
+    private val enrollments: EnrollmentRepository,
 ) : ApplicationRunner {
 
     private val log = LoggerFactory.getLogger(DemoDataSeeder::class.java)
@@ -51,6 +56,16 @@ class DemoDataSeeder(
                 ),
             )
             log.info("seeded demo account: {} ({})", account.email, account.role)
+        }
+        // Flyway seed runs before demo users exist, so the demo student's
+        // enrollments are (re)created here — idempotent, fresh-DB safe.
+        users.findByEmailIgnoreCase("student@demo.campusute.vn")?.let { student ->
+            if (enrollments.findByStudentId(student.id).isEmpty()) {
+                enrollments.saveAll(
+                    sections.findAll().map { section -> Enrollment(studentId = student.id, classSectionId = section.id) },
+                )
+                log.info("seeded demo enrollments for {}", student.email)
+            }
         }
         audit.record(null, "SEED_DEMO", "users")
     }
