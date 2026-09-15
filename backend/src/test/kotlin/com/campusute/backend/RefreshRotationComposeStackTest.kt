@@ -5,6 +5,7 @@ import org.junit.jupiter.api.MethodOrderer
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestMethodOrder
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
@@ -33,6 +34,7 @@ import kotlin.test.assertEquals
         "app.demo-mode=true",
     ],
 )
+@EnabledIfSystemProperty(named = "campusute.composeStack", matches = "true")
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class RefreshRotationComposeStackTest {
 

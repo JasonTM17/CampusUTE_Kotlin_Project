@@ -45,7 +45,14 @@ class RefreshTokenService(
             ?: throw ApiException(ErrorCode.AUTH_TOKEN_INVALID, "Refresh token không hợp lệ.")
 
         if (!stored.isActive()) {
-            revoker.revokeAllFor(stored.userId) // committed in its own tx
+            try {
+                revoker.revokeAllFor(stored.userId) // committed in its own tx
+            } catch (revokerFailure: Exception) {
+                // Never let revocation infrastructure failure mask the
+                // security response; sessions get re-revoked on next reuse.
+                org.slf4j.LoggerFactory.getLogger(javaClass)
+                    .warn("session_revocation_failed", revokerFailure)
+            }
             throw ApiException(ErrorCode.AUTH_SESSION_REVOKED, "Phiên đã bị thu hồi, vui lòng đăng nhập lại.")
         }
 

@@ -39,9 +39,18 @@ class GlobalExceptionHandler {
     @ExceptionHandler(Exception::class)
     fun handleUnknown(ex: Exception): ResponseEntity<ApiEnvelope<Nothing>> {
         // Full detail stays in server logs; clients never receive stack traces.
+        // The exception class name rides along to speed up ops diagnosis
+        // without leaking internals.
         log.error("unhandled_exception", ex)
-        return ResponseEntity.status(500)
-            .body(ApiEnvelope.fail(toError(ErrorCode.SYSTEM_INTERNAL, "Lỗi hệ thống, vui lòng thử lại sau.")))
+        return ResponseEntity.status(500).body(
+            ApiEnvelope.fail(
+                toError(
+                    ErrorCode.SYSTEM_INTERNAL,
+                    "Lỗi hệ thống, vui lòng thử lại sau.",
+                    details = mapOf("exception" to ex.javaClass.name),
+                ),
+            ),
+        )
     }
 
     private fun toError(code: ErrorCode, message: String, details: Map<String, Any?>? = null) = ApiError(

@@ -57,5 +57,6 @@ tasks.withType<Test> {
     testLogging {
         events("failed")
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showStandardStreams = true // app logs (incl. server stacks) in CI output
     }
 }
