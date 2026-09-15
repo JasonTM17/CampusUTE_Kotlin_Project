@@ -66,7 +66,9 @@ class ScheduleSession(
 )
 
 interface CourseRepository : JpaRepository<Course, UUID>
-interface LecturerRepository : JpaRepository<Lecturer, UUID>
+interface LecturerRepository : JpaRepository<Lecturer, UUID> {
+    fun findByUserId(userId: UUID): Lecturer?
+}
 interface ClassSectionRepository : JpaRepository<ClassSection, UUID>
 interface ScheduleSessionRepository : JpaRepository<ScheduleSession, UUID> {
     fun findByClassSectionIdInAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
