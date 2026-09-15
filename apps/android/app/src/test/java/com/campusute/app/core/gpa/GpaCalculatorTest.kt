@@ -7,11 +7,11 @@ import org.junit.Test
 class GpaCalculatorTest {
 
     @Test
-    fun `grade point thresholds match the regulation table`() {
+    fun `grade point thresholds match the HCMUTE regulation table`() {
         val table = mapOf(
-            10.0 to 4.0, 9.0 to 4.0, 8.9 to 3.5, 8.0 to 3.5,
-            7.9 to 3.0, 7.0 to 3.0, 6.9 to 2.0, 6.0 to 2.0,
-            5.9 to 1.5, 5.0 to 1.5, 4.9 to 0.0, 0.0 to 0.0,
+            10.0 to 4.0, 8.5 to 4.0, 8.4 to 3.0, 7.0 to 3.0,
+            6.9 to 2.0, 5.5 to 2.0, 5.4 to 1.0, 4.0 to 1.0,
+            3.9 to 0.0, 0.0 to 0.0,
         )
         table.forEach { (score, expected) ->
             assertEquals("score=$score", expected, GpaCalculator.gradePoint(score), 1e-9)
@@ -21,21 +21,22 @@ class GpaCalculatorTest {
     @Test
     fun `letters round at regulation cut-offs`() {
         assertEquals("A", GpaCalculator.letter(8.5))
-        assertEquals("B+", GpaCalculator.letter(8.0))
+        assertEquals("B", GpaCalculator.letter(8.4))
         assertEquals("B", GpaCalculator.letter(7.0))
-        assertEquals("F", GpaCalculator.letter(4.0))
-        assertEquals("D+", GpaCalculator.letter(5.0))
+        assertEquals("C", GpaCalculator.letter(5.5))
+        assertEquals("D", GpaCalculator.letter(4.0))
+        assertEquals("F", GpaCalculator.letter(3.9))
     }
 
     @Test
     fun `gpa is credit weighted`() {
         val gpa = GpaCalculator.gpa(
             listOf(
-                GpaCalculator.CourseScore(credits = 3, score10 = 8.0), // 3.5
-                GpaCalculator.CourseScore(credits = 2, score10 = 5.0), // 1.5
+                GpaCalculator.CourseScore(credits = 3, score10 = 8.0), // B = 3.0
+                GpaCalculator.CourseScore(credits = 2, score10 = 5.0), // D = 1.0
             ),
         )
-        assertEquals((3 * 3.5 + 2 * 1.5) / 5, gpa, 1e-9)
+        assertEquals((3 * 3.0 + 2 * 1.0) / 5, gpa, 1e-9)
     }
 
     @Test
@@ -45,7 +46,7 @@ class GpaCalculatorTest {
 
     @Test
     fun `required final solves the weighted equation`() {
-        // components: assignment 8.5*0.2 + midterm 7.5*0.3 = 3.95; target 8.0 with final 0.5
+        // assignment 8.5*0.2 + midterm 7.5*0.3 = 3.95; target 8.0, final 0.5
         val needed = GpaCalculator.requiredFinal(
             target = 8.0,
             others = listOf(

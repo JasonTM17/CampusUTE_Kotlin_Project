@@ -1,28 +1,24 @@
 package com.campusute.app.core.gpa
 
 /**
- * Deterministic 4.0-scale GPA math (HCMUTE 10→4 conversion). Pure Kotlin —
- * the LLM must NEVER compute grades (plan ADR: deterministic boundaries).
+ * Deterministic 4.0-scale GPA math per the HCMUTE 10→4 regulation
+ * (A: 8.5–10 → 4.0, B: 7.0–8.4 → 3.0, C: 5.5–6.9 → 2.0, D: 4.0–5.4 → 1.0,
+ * F: < 4.0 → 0). Pure Kotlin — the LLM must NEVER compute grades.
  */
 object GpaCalculator {
 
-    /** 10-point score -> 4.0 letter point (HCMUTE academic regulation table). */
     fun gradePoint(score10: Double): Double = when {
-        score10 >= 9.0 -> 4.0
-        score10 >= 8.0 -> 3.5
+        score10 >= 8.5 -> 4.0
         score10 >= 7.0 -> 3.0
-        score10 >= 6.0 -> 2.0
-        score10 >= 5.0 -> 1.5
+        score10 >= 5.5 -> 2.0
+        score10 >= 4.0 -> 1.0
         else -> 0.0
     }
 
     fun letter(score10: Double): String = when {
         score10 >= 8.5 -> "A"
-        score10 >= 8.0 -> "B+"
         score10 >= 7.0 -> "B"
-        score10 >= 6.5 -> "C+"
         score10 >= 5.5 -> "C"
-        score10 >= 5.0 -> "D+"
         score10 >= 4.0 -> "D"
         else -> "F"
     }
@@ -36,10 +32,6 @@ object GpaCalculator {
         return courses.sumOf { it.credits * gradePoint(it.score10) } / totalCredits
     }
 
-    /**
-     * What-if: projected course total from component scores; missing FINAL is
-     * solved from the target (invert the weighted sum) when solvable.
-     */
     data class Component(val name: String, val score: Double, val weight: Double)
 
     fun courseTotal(components: List<Component>): Double =
