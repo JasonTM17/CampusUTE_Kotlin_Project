@@ -1,11 +1,8 @@
 package com.campusute.app.feature.appshell
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -26,9 +23,10 @@ import com.campusute.app.R
 import com.campusute.app.core.data.SessionRepository
 import com.campusute.app.core.designsystem.components.CampusTopBar
 import com.campusute.app.feature.auth.LoginScreen
+import com.campusute.app.feature.chat.ChatScreen
 import com.campusute.app.feature.schedule.TimetableScreen
 
-/** Signed-in shell: top bar (logout) + bottom tabs (profile / timetable). */
+/** Signed-in shell: top bar (logout) + bottom tabs (home / timetable / AI chat). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampusApp(
@@ -87,22 +85,29 @@ fun HomeShell(
                 NavigationBarItem(
                     selected = tab == 0,
                     onClick = { tab = 0 },
-                    icon = { Icon(Icons.Filled.Home, contentDescription = "Trang chủ") },
+                    icon = { Text("🏠") },
                     label = { Text("Trang chủ") },
                 )
                 NavigationBarItem(
                     selected = tab == 1,
                     onClick = { tab = 1 },
-                    icon = { Icon(Icons.Filled.DateRange, contentDescription = "Lịch học") },
+                    icon = { Text("📅") },
                     label = { Text("Lịch học") },
+                )
+                NavigationBarItem(
+                    selected = tab == 2,
+                    onClick = { tab = 2 },
+                    icon = { Text("🤖") },
+                    label = { Text("Trợ lý AI") },
                 )
             }
         },
     ) { padding ->
-        androidx.compose.foundation.layout.Box(Modifier.padding(padding)) {
+        Box(Modifier.padding(padding)) {
             when (tab) {
                 0 -> HomeScreen()
-                else -> TimetableScreen(hiltViewModel())
+                1 -> TimetableScreen(hiltViewModel())
+                else -> ChatScreen(hiltViewModel())
             }
         }
     }

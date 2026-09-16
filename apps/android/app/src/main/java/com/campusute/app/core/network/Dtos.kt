@@ -98,3 +98,23 @@ data class SyncResponseDto(val results: List<OpResultDto>, val serverTime: Strin
 
 @Serializable
 data class TaskChangesDto(val changes: List<TaskDto>, val serverTime: String)
+
+// ---- AI chat contract (Phase 5/6, via backend gateway) ----
+
+@Serializable
+data class AiChatRequest(val message: String)
+
+@Serializable
+data class AiCitationDto(
+    val document: String? = null,
+    val page: Int? = null,
+    val excerpt: String? = null,
+    val source: String? = null,
+)
+
+@Serializable
+data class AiChatResponse(
+    val answer: String,
+    val citations: List<AiCitationDto> = emptyList(),
+    val tools: List<String> = emptyList(),
+)

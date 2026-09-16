@@ -50,6 +50,8 @@ class LoginViewModelTest {
         override suspend fun refresh(body: RefreshRequestDto) = TODO()
         override suspend fun logout(body: RefreshRequestDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
         override suspend fun me() = ApiEnvelopeDto(data = user)
+        override suspend fun aiChat(body: com.campusute.app.core.network.AiChatRequest): ApiEnvelopeDto<com.campusute.app.core.network.AiChatResponse> =
+            ApiEnvelopeDto(data = com.campusute.app.core.network.AiChatResponse("ok"))
         override suspend fun scheduleSessions(
             from: String,
             to: String,
@@ -59,7 +61,6 @@ class LoginViewModelTest {
         override suspend fun taskSync(body: com.campusute.app.core.network.SyncRequestDto): ApiEnvelopeDto<com.campusute.app.core.network.SyncResponseDto> =
             ApiEnvelopeDto(data = com.campusute.app.core.network.SyncResponseDto(emptyList(), "1970-01-01T00:00:00Z"))
     }
-
     private fun viewModel(api: CampusApi, store: TokenStore) =
         LoginViewModel(SessionRepository(api, store))
 

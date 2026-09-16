@@ -97,7 +97,7 @@ def retrieve(query: str, enrolled_course_codes: list[str], k: int = 4) -> list[d
         results.append({
             "document": r["title"],
             "page": r["page"],
-            "excerpt": r["content"][:220],
+            "excerpt": r["content"][:900],
             "source": r["source"],
             "course_code": r["course_code"],
         })

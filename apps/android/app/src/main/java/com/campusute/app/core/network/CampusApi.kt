@@ -31,4 +31,7 @@ interface CampusApi {
 
     @POST("tasks/sync")
     suspend fun taskSync(@Body body: SyncRequestDto): ApiEnvelopeDto<SyncResponseDto>
+
+    @POST("ai/chat")
+    suspend fun aiChat(@Body body: AiChatRequest): ApiEnvelopeDto<AiChatResponse>
 }

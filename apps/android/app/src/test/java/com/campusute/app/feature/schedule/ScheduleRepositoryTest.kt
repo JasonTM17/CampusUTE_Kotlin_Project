@@ -59,6 +59,8 @@ class ScheduleRepositoryTest {
         override suspend fun logout(body: RefreshRequestDto): ApiEnvelopeDto<Map<String, String>> =
             ApiEnvelopeDto(data = emptyMap())
         override suspend fun me() = ApiEnvelopeDto(data = UserDto("1", "e", "n", null, null, listOf("STUDENT")))
+        override suspend fun aiChat(body: com.campusute.app.core.network.AiChatRequest): ApiEnvelopeDto<com.campusute.app.core.network.AiChatResponse> =
+            ApiEnvelopeDto(data = com.campusute.app.core.network.AiChatResponse("ok"))
         override suspend fun taskChanges(since: String): ApiEnvelopeDto<com.campusute.app.core.network.TaskChangesDto> =
             ApiEnvelopeDto(data = com.campusute.app.core.network.TaskChangesDto(emptyList(), "1970-01-01T00:00:00Z"))
         override suspend fun taskSync(body: com.campusute.app.core.network.SyncRequestDto): ApiEnvelopeDto<com.campusute.app.core.network.SyncResponseDto> =
@@ -76,7 +78,6 @@ class ScheduleRepositoryTest {
                 Behaviour.ERROR -> ApiEnvelopeDto(error = ApiErrorDto("SYSTEM_INTERNAL", "boom"))
             }
     }
-
     @Before fun setUp() { Dispatchers.setMain(StandardTestDispatcher()) }
     @After fun tearDown() { Dispatchers.resetMain() }
 

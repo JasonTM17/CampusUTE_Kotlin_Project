@@ -16,33 +16,69 @@ import re
 from . import config, tools
 
 SCHEDULE_INTENT = re.compile(r"(lịch|schedule|học|tiết|phòng|week|tuần)", re.I)
-REGULATION_INTENT = re.compile(r"(điều kiện|tốt nghiệp|quy chế|regulation|tín chỉ|credit|chuyển ngành)", re.I)
-OTHERS_DATA = re.compile(r"(sinh viên khác|của bạn ([a-z]+ )?\w+|student b|other student|grades of)", re.I)
+GRADES_INTENT = re.compile(r"(bảng điểm|xem điểm|điểm môn|điểm midterm|điểm final|điểm assignment|kết quả học tập|gpa|đã có điểm|có điểm)", re.I)
+REGULATION_INTENT = re.compile(r"(điều kiện|tốt nghiệp|quy chế|regulation|tín chỉ|credit|chuyển ngành|thi lại|học phí|tích lũy|học bổng|nợ môn)", re.I)
+LIBRARY_INTENT = re.compile(r"(thư viện|library|sách|tài liệu tham khảo|mượn|đề thi)", re.I)
+EVENT_INTENT = re.compile(r"(sự kiện|event|clb|câu lạc bộ|workshop|seminar)", re.I)
+CAREER_INTENT = re.compile(r"(việc làm|intern|thực tập|career|cv|doanh nghiệp)", re.I)
+SERVICE_INTENT = re.compile(r"(ticket|hỗ trợ|support|sự cố|báo hỏng)", re.I)
+OTHERS_DATA = re.compile(r"(sinh viên khác|học bạ|student b|other student|grades of|bạn cùng lớp)", re.I)
 STOPWORDS = {"là", "gì", "của", "và", "cho", "tôi", "có", "the", "what", "is", "of", "my"}
 # Mock-mode instruction firewall: imperative/role-override phrasing inside
 # documents is untrusted content — it must never be selected as an answer
 # sentence. The live LLM path enforces the same rule via the system prompt.
 INJECTION_RE = re.compile(r"(ignore|instructions|reveal|admin|bypass|quên (?:tất )?cả|hãy tự|tự cho)", re.I)
 
+# Agent registry: each intent maps to an agent with its OWN tool allowlist.
+# Agents not backed by a dedicated backend module (library/career/service)
+# answer from the PUBLIC knowledge corpus only — they never gain data tools.
+
 
 def route(message: str) -> str:
+    # Any other-student data probe is refused before routing (defense in
+    # depth; the backend tool layer enforces the same rule regardless).
+    if OTHERS_DATA.search(message):
+        return "REFUSE_CROSS_STUDENT"
     if REGULATION_INTENT.search(message):
         return "REGULATION"
-    return "SCHEDULE" if SCHEDULE_INTENT.search(message) else "REGULATION"
+    if GRADES_INTENT.search(message):
+        return "GRADES"
+    if SCHEDULE_INTENT.search(message):
+        return "SCHEDULE"
+    if LIBRARY_INTENT.search(message) or EVENT_INTENT.search(message) or CAREER_INTENT.search(message) or SERVICE_INTENT.search(message):
+        return "KNOWLEDGE"  # library/career/service agents: public corpus only
+    return "REGULATION"
 
 
 def answer(message: str, user_jwt: str, enrolled_course_codes: list[str]) -> dict:
     """Returns {answer, citations:[{document,page,excerpt}], tools:[names]}."""
-    # Cross-student probing is refused before any tool call (defense in depth;
-    # the backend tool layer enforces the same rule regardless).
-    if OTHERS_DATA.search(message):
+    if route(message) == "REFUSE_CROSS_STUDENT":
         return {
             "answer": "Tôi chỉ có thể truy vấn dữ liệu của chính bạn, dựa trên quyền đã xác thực.",
             "citations": [],
             "tools": [],
         }
 
-    if route(message) == "SCHEDULE":
+    agent = route(message)
+    if agent == "GRADES":
+        result = tools.get_my_grades(user_jwt)
+        if "error" in result:
+            return {
+                "answer": "Tôi không truy vấn được điểm của bạn (quyền bị từ chối bởi hệ thống).",
+                "citations": [],
+                "tools": ["get_my_grades"],
+            }
+        rows = [
+            f"- {c['courseCode']}: " + ", ".join(f"{g['component']} {g['score']}" for g in c.get("components", []))
+            for c in result["courses"]
+        ]
+        return {
+            "answer": ("Điểm các môn của bạn:\n" + "\n".join(rows)) if rows else "Chưa có điểm nào được ghi nhận.",
+            "citations": [],
+            "tools": ["get_my_grades"],
+        }
+
+    if agent == "SCHEDULE":
         result = tools.get_my_schedule(user_jwt)
         if "error" in result:
             return {
