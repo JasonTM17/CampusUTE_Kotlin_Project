@@ -116,7 +116,7 @@ docker compose --profile core up -d  # postgres+pgvector, redis, minio, backend,
 | 3 | Generic sync engine (delta, pending queue, optimistic) | ✅ DONE |
 | 4 | Academic core (assignment, grade/GPA, QR attendance, events) | ✅ DONE |
 | 5 | AI core: agents + RAG + citations | ✅ DONE |
-| 6 | 8 agents + eval harness + notes AI | PLANNED |
+| 6 | 8 agents + eval harness + notes AI | 🚧 IN PROGRESS (agents + eval ✅, notes/SSE planned) |
 | 7 | Secondary modules + Kafka/ClickHouse analytics | PLANNED |
 | 8 | Hardening, docs, demo GIF, release v1.0.0 | PLANNED |
 
