@@ -4,6 +4,7 @@ These mirror the CI suite (which spins the compose stack); locally execute:
   AI_DATABASE_URL=... pytest tests/ -q
 The leak gate MUST fail closed if the backend tool layer ever regresses.
 """
+import functools
 import os
 
 import pytest
@@ -15,13 +16,17 @@ STACK = os.environ.get("RUN_STACK_TESTS") == "true"
 requires_stack = pytest.mark.skipif(not STACK, reason="needs the docker compose stack (RUN_STACK_TESTS=true)")
 
 
+@functools.lru_cache(maxsize=8)
 def _login(email: str, pw: str) -> str:
+    # Cached: the login rate limiter (by design) rejects rapid repeat logins.
     r = requests.post(
         "http://localhost:18080/api/v1/auth/login",
         json={"email": email, "password": pw},
         timeout=10,
     )
-    return r.json()["data"]["accessToken"]
+    body = r.json()
+    assert body.get("data"), f"login failed for {email}: {body}"
+    return body["data"]["accessToken"]
 
 
 def _chat(message: str, token: str) -> dict:
@@ -34,14 +39,49 @@ def _chat(message: str, token: str) -> dict:
     return r.json()
 
 
-def _ingest(title: str, content: str, visibility="PUBLIC", course_code=None, source=None):
+def _ingest(title: str, content: str, visibility="PUBLIC", course_code=None, source=None, token=None):
+    headers = {"X-Internal-Token": token or os.environ.get("AI_INGEST_TOKEN", "dev-ingest-token")}
     r = requests.post(
         "http://localhost:8600/ingest",
         json={"title": title, "content": content, "visibility": visibility,
               "course_code": course_code, "source": source},
+        headers=headers,
         timeout=10,
     )
+    return r
+
+
+def _chat_raw(message: str, token: str, codes=None, internal=None):
+    headers = {"Authorization": "Bearer " + token}
+    if internal is not None:
+        headers["X-Internal-Token"] = internal
+    body = {"message": message}
+    if codes is not None:
+        body["enrolled_course_codes"] = codes
+    r = requests.post("http://localhost:8600/chat", json=body, headers=headers, timeout=15)
     return r.json()
+
+
+@requires_stack
+def test_ingest_requires_internal_token():
+    r = requests.post(
+        "http://localhost:8600/ingest",
+        json={"title": "Poison Attempt", "content": "should never be indexed"},
+        timeout=10,
+    )
+    assert r.status_code == 401, "ingest without token must be rejected"
+
+
+@requires_stack
+def test_course_code_spoofing_without_token_sees_public_only():
+    token = _login("student@demo.campusute.vn", "Demo#Student1")
+    # A COURSE-restricted doc for a course the student is NOT enrolled in.
+    _ingest("Mật kỳ CS999", "Nội dung bí mật kỳ CS999 chỉ dành cho sinh viên CS999.", visibility="COURSE", course_code="CS999")
+    # Spoof: claim enrollment in CS999 WITHOUT the internal token.
+    result = _chat_raw("Nội dung bí mật kỳ CS999?", token, codes=["CS999"], internal=None)
+    docs = [c.get("document", "") for c in result.get("citations", [])]
+    assert all("CS999" not in d for d in docs), f"spoofed codes must not unlock COURSE docs: {docs}"
+    assert "CS999" not in result["answer"], result["answer"][:120]
 
 
 @requires_stack

@@ -53,6 +53,8 @@ def ingest_document(title: str, content: str, source: str | None = None,
                     visibility: str = "PUBLIC", course_code: str | None = None) -> int:
     init_schema()
     conn = connect()
+    # Re-ingest with the same title supersedes the old version (no dup pollution)
+    conn.execute("UPDATE ai_documents SET active = FALSE WHERE title = %s", (title,))
     row = conn.execute(
         "INSERT INTO ai_documents (title, source, visibility, course_code) VALUES (%s,%s,%s,%s) RETURNING id",
         (title, source, visibility, course_code),
@@ -77,6 +79,7 @@ def retrieve(query: str, enrolled_course_codes: list[str], k: int = 4) -> list[d
     conn = connect()
     qvec = json.dumps(embeddings.embed(query))
     course_filter = "OR (d.visibility = 'COURSE' AND d.course_code = ANY(%s))" if enrolled_course_codes else ""
+    params = ([qvec, enrolled_course_codes] if enrolled_course_codes else [qvec])
     rows = conn.execute(
         f"""
         SELECT c.id, c.page, c.content, d.title, d.source, d.course_code,
@@ -86,7 +89,7 @@ def retrieve(query: str, enrolled_course_codes: list[str], k: int = 4) -> list[d
         ORDER BY vec_dist ASC
         LIMIT %s
         """,
-        (qvec, enrolled_course_codes or [], k * 4),
+        (*params, k * 4),
     ).fetchall()
     results, seen_docs = [], set()
     for r in rows:
