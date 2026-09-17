@@ -57,6 +57,25 @@ def chat(body: ChatRequest, authorization: str = Header(default=""), x_internal_
     return agents.answer(body.message, user_jwt, codes)
 
 
+class SummarizeRequest(BaseModel):
+    title: str = ""
+    content: str
+
+
+@app.post("/summarize")
+def summarize(body: SummarizeRequest, authorization: str = Header(default="")) -> dict:
+    """AI PROPOSE-ONLY: returns a summary suggestion; never mutates the note.
+    The client shows it as a preview the user must accept."""
+    if not authorization.startswith("Bearer "):
+        return {"summary": "", "proposed": False}
+    content = (body.content or "").strip()
+    if len(content) > 50_000:
+        raise HTTPException(status_code=400, detail="Ghi chú quá dài.")
+    sentences = [s.strip() for s in __import__("re").split(r"(?<=[.!?])\s+", content) if s.strip()]
+    summary = " • ".join(sentences[:3]) if sentences else ""
+    return {"summary": summary, "proposed": bool(summary)}
+
+
 @app.post("/ingest")
 def ingest(body: IngestRequest, x_internal_token: str | None = Header(default=None, alias="X-Internal-Token")) -> dict:
     _require_internal_token(x_internal_token)

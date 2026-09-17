@@ -129,3 +129,18 @@ def test_prompt_injection_in_document_does_not_change_behavior():
     assert "tất cả" not in result["answer"].lower()
     assert "admin" not in result["answer"].lower()
     assert result["citations"][0]["document"] != "Tài liệu giả mạo" or "150 tín chỉ" in result["answer"] or True
+
+
+@requires_stack
+def test_summarize_is_propose_only():
+    tk = _login("student@demo.campusute.vn", "Demo#Student1")
+    r = requests.post(
+        "http://localhost:8600/summarize",
+        json={"title": "Ghi chú học Database", "content": "Normalization loại bỏ dữ liệu trùng lặp. "
+              "1NF đảm bảo từng ô chứa một giá trị. 3NF loại bỏ phụ thuộc chuyển tiếp."},
+        headers={"Authorization": "Bearer " + tk},
+        timeout=10,
+    )
+    body = r.json()
+    assert body["proposed"] is True
+    assert "Normalization" in body["summary"]

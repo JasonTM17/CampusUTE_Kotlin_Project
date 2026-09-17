@@ -14,8 +14,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,6 +29,11 @@ import com.campusute.app.core.designsystem.components.CampusLoading
 @Composable
 fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        runCatching { focusRequester.requestFocus() }
+    }
 
     Column(Modifier.fillMaxSize()) {
         LazyColumn(
@@ -59,7 +67,7 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
             OutlinedTextField(
                 value = state.input,
                 onValueChange = viewModel::onInputChange,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(focusRequester),
                 singleLine = true,
                 label = { Text("Hỏi trợ lý AI...") },
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
