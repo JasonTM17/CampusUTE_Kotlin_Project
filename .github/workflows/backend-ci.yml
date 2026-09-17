@@ -24,6 +24,14 @@ jobs:
         run: |
           BACKEND_PORT=18080 docker compose -f ../docker-compose.yml up -d --build --wait postgres redis backend ai-service
           pip install -r requirements.txt
+          echo "waiting for backend + ai-service..."
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:8600/health >/dev/null 2>&1 && \
+            curl -sf http://localhost:18080/actuator/health >/dev/null 2>&1 && break
+            sleep 3
+          done
+          curl -sf http://localhost:8600/health >/dev/null
+          curl -sf http://localhost:18080/actuator/health >/dev/null
           RUN_STACK_TESTS=true AI_INGEST_TOKEN=dev-ingest-token \
             python -m pytest tests/ -v
       - name: Contract freeze check
