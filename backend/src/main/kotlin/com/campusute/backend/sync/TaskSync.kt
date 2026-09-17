@@ -102,6 +102,9 @@ class TaskSyncService(
                 } else if (op.opType.uppercase() == "DELETE") {
                     task.deleted = true
                     task.version += 1
+                    // Column is DB-managed (insertable=false), so the sync
+                    // cursor must be bumped explicitly or delta pull skips it.
+                    task.updatedAt = Instant.now()
                     tasks.save(task)
                     OpResult(op.clientOpId, OpStatus.APPLIED, task)
                 } else {
@@ -109,6 +112,7 @@ class TaskSyncService(
                     op.dueDate?.let { task.dueDate = it }
                     op.done?.let { task.done = it }
                     task.version += 1
+                    task.updatedAt = Instant.now()
                     tasks.save(task)
                     OpResult(op.clientOpId, OpStatus.APPLIED, task)
                 }

@@ -65,7 +65,9 @@ class ScheduleSession(
     @Column(name = "end_date", nullable = false) val endDate: LocalDate,
 )
 
-interface CourseRepository : JpaRepository<Course, UUID>
+interface CourseRepository : JpaRepository<Course, UUID> {
+    fun findByCode(code: String): Course?
+}
 interface LecturerRepository : JpaRepository<Lecturer, UUID> {
     fun findByUserId(userId: UUID): Lecturer?
 }

@@ -36,6 +36,11 @@ class GlobalExceptionHandler {
         return ResponseEntity.status(401).body(ApiEnvelope.fail(toError(code, "Xác thực thất bại.")))
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException::class)
+    fun handleUnreadable(ex: org.springframework.http.converter.HttpMessageNotReadableException): ResponseEntity<ApiEnvelope<Nothing>> =
+        ResponseEntity.badRequest()
+            .body(ApiEnvelope.fail(toError(ErrorCode.VALIDATION_FAILED, "Nội dung request không đọc được (kiểm tra encoding UTF-8).")))
+
     @ExceptionHandler(Exception::class)
     fun handleUnknown(ex: Exception): ResponseEntity<ApiEnvelope<Nothing>> {
         // Full detail stays in server logs; clients never receive stack traces.

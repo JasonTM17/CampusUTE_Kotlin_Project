@@ -54,6 +54,13 @@ class GradeController(
 ) {
     data class GradeComponentDto(val component: String, val score: Double, val weight: Double)
     data class CourseGradesDto(val courseId: UUID, val courseCode: String, val courseName: String, val components: List<GradeComponentDto>)
+    data class UpsertGradeRequest(
+        val studentId: UUID,
+        val courseCode: String,
+        val component: String,
+        val score: Double,
+        val weight: Double,
+    )
 
     @Operation(summary = "Caller's grade components per course")
     @GetMapping("/me")
@@ -70,6 +77,46 @@ class GradeController(
             )
         }
         return ApiEnvelope.ok(byCourse)
+    }
+
+    @Operation(summary = "LECTURER/ADMIN: upsert a grade component")
+    @PostMapping
+    @PreAuthorize("hasAnyRole('LECTURER','DEPARTMENT_ADMIN','ACADEMIC_STAFF','ADMIN','SUPER_ADMIN')")
+    fun upsert(@RequestBody body: UpsertGradeRequest): ApiEnvelope<Map<String, String>> {
+        val validComponents = setOf("ASSIGNMENT", "MIDTERM", "FINAL", "OTHER")
+        if (body.component !in validComponents) {
+            throw ApiException(ErrorCode.VALIDATION_FAILED, "Thành phần điểm không hợp lệ.")
+        }
+        if (body.score < 0 || body.score > 10 || body.weight < 0 || body.weight > 1) {
+            throw ApiException(ErrorCode.VALIDATION_FAILED, "Điểm phải trong [0..10], trọng số [0..1].")
+        }
+        val course = courses.findAll().firstOrNull { it.code == body.courseCode }
+            ?: throw ApiException(ErrorCode.NOT_FOUND, "Không tìm thấy môn học.")
+        val existing = grades.findByStudentId(body.studentId)
+            .firstOrNull { it.courseId == course.id && it.component == body.component }
+        val saved = if (existing != null) {
+            grades.save(
+                Grade(
+                    id = existing.id,
+                    studentId = existing.studentId,
+                    courseId = existing.courseId,
+                    component = existing.component,
+                    score = java.math.BigDecimal(body.score),
+                    weight = java.math.BigDecimal(body.weight),
+                ),
+            )
+        } else {
+            grades.save(
+                Grade(
+                    studentId = body.studentId,
+                    courseId = course.id,
+                    component = body.component,
+                    score = java.math.BigDecimal(body.score),
+                    weight = java.math.BigDecimal(body.weight),
+                ),
+            )
+        }
+        return ApiEnvelope.ok(mapOf("gradeId" to saved.id.toString(), "status" to "SAVED"))
     }
 }
 
@@ -145,7 +192,8 @@ class EventController(
         if (idempotencyKey.isBlank() || idempotencyKey.length > 64) {
             throw ApiException(ErrorCode.VALIDATION_FAILED, "Idempotency-Key không hợp lệ.")
         }
-        registrations.findByStudentIdAndIdempotencyKey(userId, "event:$id")
+        // Same caller key -> same result, whatever the event.
+        registrations.findByStudentIdAndIdempotencyKey(userId, idempotencyKey)
             ?.let { return ApiEnvelope.ok(mapOf("registrationId" to it.id.toString(), "status" to "REGISTERED")) }
 
         val event = events.findById(id).orElseThrow { ApiException(ErrorCode.NOT_FOUND, "Không tìm thấy sự kiện.") }
@@ -154,7 +202,7 @@ class EventController(
         }
         val existing = registrations.findByEventIdAndStudentId(id, userId)
         val saved = existing ?: registrations.save(
-            EventRegistration(eventId = id, studentId = userId, idempotencyKey = "event:$id"),
+            EventRegistration(eventId = id, studentId = userId, idempotencyKey = idempotencyKey),
         )
         return ApiEnvelope.ok(mapOf("registrationId" to saved.id.toString(), "status" to "REGISTERED"))
     }
@@ -201,6 +249,7 @@ class AttendanceService(
     private val records: AttendanceRecordRepository,
     private val enrollments: EnrollmentRepository,
     private val lecturerRows: LecturerRepository,
+    private val sections: ClassSectionRepository,
 ) {
     private val random = SecureRandom()
 
@@ -208,6 +257,9 @@ class AttendanceService(
 
     /** Lecturer device keeps [secret] and rotates the QR locally (same HMAC scheme). */
     fun openSession(sectionId: UUID, lecturerUserId: UUID): OpenedSession {
+        sections.findById(sectionId).orElseThrow {
+            ApiException(ErrorCode.NOT_FOUND, "Lớp học phần không tồn tại.")
+        }
         val lecturerId = (lecturerRows.findByUserId(lecturerUserId) ?: lecturerRows.save(
             Lecturer(userId = lecturerUserId, fullName = "Lecturer $lecturerUserId"),
         )).id
@@ -217,6 +269,19 @@ class AttendanceService(
             AttendanceSession(sectionId = sectionId, lecturerId = lecturerId, secret = secret),
         )
         return OpenedSession(session, secret)
+    }
+
+    /** Only the lecturer who owns the session (or an admin) may close it. */
+    fun closeSession(sessionId: UUID, closerUserId: UUID, isAdmin: Boolean) {
+        val session = sessions.findById(sessionId).orElseThrow {
+            ApiException(ErrorCode.NOT_FOUND, "Phiên điểm danh không tồn tại.")
+        }
+        if (!isAdmin) {
+            val owns = lecturerRows.findByUserId(closerUserId)?.id == session.lecturerId
+            if (!owns) throw ApiException(ErrorCode.AUTH_FORBIDDEN, "Chỉ giảng viên chủ nhiệm mới đóng được phiên.")
+        }
+        session.active = false
+        sessions.save(session)
     }
 
     fun verifyScan(payload: String, nonce: String, studentId: UUID, now: Instant = Instant.now()): ScanVerdict {
@@ -231,7 +296,8 @@ class AttendanceService(
         val session = sessions.findById(sessionId).orElse(null)
             ?: return ScanVerdict(false, "Phiên điểm danh không tồn tại.")
         if (!session.active) return ScanVerdict(false, "Phiên điểm danh đã kết thúc.")
-        if (now.epochSecond / BUCKET_SECONDS - bucket > 1) return ScanVerdict(false, "Mã QR đã hết hạn, hãy quét mã mới.")
+        val deltaBuckets = now.epochSecond / BUCKET_SECONDS - bucket
+        if (deltaBuckets > 1 || deltaBuckets < -1) return ScanVerdict(false, "Mã QR đã hết hạn, hãy quét mã mới.")
         if (signature(session.secret, sessionId, bucket) != parts[2]) return ScanVerdict(false, "Chữ ký mã QR không hợp lệ.")
         if (!enrollments.sectionIdsOfStudent(studentId).contains(session.sectionId)) {
             return ScanVerdict(false, "Bạn không thuộc lớp học phần này.")
@@ -280,6 +346,19 @@ class AttendanceController(private val attendance: AttendanceService) {
         val lecturerId = currentUserUuid() ?: throw ApiException(ErrorCode.AUTH_TOKEN_INVALID, "Phiên không hợp lệ.")
         val opened = attendance.openSession(body.sectionId, lecturerId)
         return ApiEnvelope.ok(CreateSessionResponse(opened.session.id, opened.secret))
+    }
+
+    @Operation(summary = "LECTURER (owner) or ADMIN: close the session — QR stops working")
+    @org.springframework.web.bind.annotation.PatchMapping("/sessions/{id}/close")
+    @PreAuthorize("hasAnyRole('LECTURER','ADMIN','SUPER_ADMIN')")
+    fun closeSession(@PathVariable id: UUID): ApiEnvelope<Map<String, String>> {
+        val userId = currentUserUuid() ?: throw ApiException(ErrorCode.AUTH_TOKEN_INVALID, "Phiên không hợp lệ.")
+        val isAdmin = org.springframework.security.core.context.SecurityContextHolder
+            .getContext().authentication.authorities.any {
+                it.authority in setOf("ROLE_ADMIN", "ROLE_SUPER_ADMIN")
+            }
+        attendance.closeSession(id, userId, isAdmin)
+        return ApiEnvelope.ok(mapOf("status" to "CLOSED"))
     }
 
     @Operation(summary = "STUDENT: submit a scanned rotating payload with a fresh nonce")

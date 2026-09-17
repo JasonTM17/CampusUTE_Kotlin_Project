@@ -79,8 +79,8 @@ class ScheduleController(private val scheduleService: ScheduleService) {
 @RestController
 @RequestMapping("/api/v1/admin")
 class AdminProbeController {
-    @Operation(summary = "ADMIN-only probe (RBAC test)")
+    @Operation(summary = "ADMIN/SUPER_ADMIN probe (RBAC test)")
     @GetMapping("/ping")
-    @org.springframework.security.access.prepost.PreAuthorize("hasRole('ADMIN')")
+    @org.springframework.security.access.prepost.PreAuthorize("hasAnyRole('ADMIN','SUPER_ADMIN')")
     fun ping(): ApiEnvelope<Map<String, String>> = ApiEnvelope.ok(mapOf("pong" to "admin"))
 }

@@ -1,8 +1,10 @@
 package com.campusute.backend.auth
 
 import com.campusute.backend.academic.ClassSectionRepository
+import com.campusute.backend.academic.CourseRepository
 import com.campusute.backend.academic.Enrollment
 import com.campusute.backend.academic.EnrollmentRepository
+import com.campusute.backend.academic.GradeRepository
 import com.campusute.backend.audit.AuditService
 import com.campusute.backend.config.AppProperties
 import org.slf4j.LoggerFactory
@@ -26,6 +28,8 @@ class DemoDataSeeder(
     private val audit: AuditService,
     private val sections: ClassSectionRepository,
     private val enrollments: EnrollmentRepository,
+    private val courses: CourseRepository,
+    private val grades: GradeRepository,
 ) : ApplicationRunner {
 
     private val log = LoggerFactory.getLogger(DemoDataSeeder::class.java)
@@ -67,7 +71,32 @@ class DemoDataSeeder(
                 )
                 log.info("seeded demo enrollments for {}", student.email)
             }
+            seedDemoGrades(studentId)
         }
         audit.record(null, "SEED_DEMO", "users")
+    }
+
+    /** V4 grade inserts cannot see demo users at migration time — upsert here. */
+    private fun seedDemoGrades(studentId: java.util.UUID) {
+        val course = courses.findByCode("DBMS311") ?: return
+        val existing = grades.findByStudentId(studentId)
+        val wanted = listOf(
+            Triple("MIDTERM", 7.5, 0.3),
+            Triple("ASSIGNMENT", 8.5, 0.2),
+            Triple("FINAL", 0.0, 0.5),
+        )
+        for ((component, score, weight) in wanted) {
+            if (existing.none { it.courseId == course.id && it.component == component }) {
+                grades.save(
+                    com.campusute.backend.academic.Grade(
+                        studentId = studentId,
+                        courseId = course.id,
+                        component = component,
+                        score = java.math.BigDecimal(score),
+                        weight = java.math.BigDecimal(weight),
+                    ),
+                )
+            }
+        }
     }
 }
