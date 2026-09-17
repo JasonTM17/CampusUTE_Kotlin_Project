@@ -22,7 +22,7 @@ jobs:
       - name: AI security gates + eval on live stack (leak / citations / injection)
         working-directory: ai-service
         run: |
-          docker compose -f ../docker-compose.yml --profile core up -d --build --wait
+          docker compose -f ../docker-compose.yml up -d --build --wait postgres redis backend ai-service
           pip install -r requirements.txt
           RUN_STACK_TESTS=true AI_INGEST_TOKEN=dev-ingest-token \
             python -m pytest tests/ -v
