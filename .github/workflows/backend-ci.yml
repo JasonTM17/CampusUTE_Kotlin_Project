@@ -19,6 +19,13 @@ jobs:
       - name: Run tests (Testcontainers on Linux CI)
         working-directory: backend
         run: ./gradlew test --no-daemon
+      - name: AI security gates + eval on live stack (leak / citations / injection)
+        working-directory: ai-service
+        run: |
+          docker compose -f ../docker-compose.yml --profile core up -d --build --wait
+          pip install -r requirements.txt
+          RUN_STACK_TESTS=true AI_INGEST_TOKEN=dev-ingest-token \
+            python -m pytest tests/ -v
       - name: Contract freeze check
         working-directory: backend
         run: ./gradlew bootJar --no-daemon
