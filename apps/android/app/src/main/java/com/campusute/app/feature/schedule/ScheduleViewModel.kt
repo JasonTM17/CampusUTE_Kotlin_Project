@@ -41,17 +41,18 @@ class ScheduleViewModel @Inject constructor(
         selectDay(LocalDate.now())
     }
 
+    private var dayJob: kotlinx.coroutines.Job? = null
+
     fun selectDay(date: LocalDate) {
-        _uiState.update {
-            it.copy(selectedDate = date, loading = it.daySessions.none { s -> s.date == date.iso() })
-        }
-        viewModelScope.launch {
+        _uiState.update { it.copy(selectedDate = date, loading = true, empty = false) }
+        dayJob?.cancel()
+        dayJob = viewModelScope.launch {
             scheduleRepository.observeDay(date.iso()).collect { sessions ->
                 _uiState.update { state ->
                     state.copy(
                         daySessions = sessions,
                         loading = false,
-                        empty = sessions.isEmpty() && !state.loading,
+                        empty = sessions.isEmpty(),
                     )
                 }
             }
@@ -77,10 +78,9 @@ class ScheduleViewModel @Inject constructor(
     }
 
     fun changeWeek(forward: Boolean) {
-        _uiState.update {
-            val newStart = it.weekStart.plusWeeks(if (forward) 1 else -1)
-            it.copy(weekStart = newStart, selectedDate = newStart)
-        }
+        val newStart = _uiState.value.weekStart.plusWeeks(if (forward) 1 else -1)
+        _uiState.update { it.copy(weekStart = newStart) }
+        selectDay(newStart)
         refresh()
     }
 

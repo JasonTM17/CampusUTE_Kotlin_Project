@@ -51,7 +51,6 @@ fun CampusApp(
         composable("home") {
             HomeShell(
                 onLogout = {
-                    sessionRepository.logout()
                     onSessionEnded()
                     navController.navigate("login") { popUpTo("home") { inclusive = true } }
                 },
@@ -67,7 +66,7 @@ fun HomeShell(
     onLogout: () -> Unit,
     sessionRepository: SessionRepository,
 ) {
-    var tab by remember { mutableStateOf(0) }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0) }
     Scaffold(
         topBar = {
             CampusTopBar(

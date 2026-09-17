@@ -40,30 +40,36 @@ class TokenAuthenticator @Inject constructor(
     private val lazyClient: dagger.Lazy<OkHttpClient>,
 ) : Authenticator {
 
+    // Concurrent 401s must not fire parallel refreshes with the same refresh
+    // token — the server treats that as reuse and revokes every session.
+    private val refreshLock = Any()
+
     override fun authenticate(route: Route?, response: Response): Request? {
         if (responseCount(response) >= 2) return null
-        val currentRefresh = tokenStore.refreshToken() ?: return null
+        synchronized(refreshLock) {
+            val currentRefresh = tokenStore.refreshToken() ?: return null
 
-        val body = """{"refreshToken":"${currentRefresh.replace("\"", "\\\"")}"}"""
-            .toRequestBody("application/json; charset=utf-8".toMediaType())
-        val request = Request.Builder()
-            .url(baseUrl + "auth/refresh")
-            .post(body)
-            .build()
-
-        val refreshed = runCatching { lazyClient.get().newCall(request).execute() }
-            .getOrNull() ?: return null
-
-        refreshed.use { resp ->
-            val tokens = if (resp.isSuccessful) parseRefresh(resp.body?.string()) else null
-            if (tokens == null) {
-                tokenStore.clear()
-                return null
-            }
-            tokenStore.saveTokens(tokens.first, tokens.second)
-            return response.request.newBuilder()
-                .header("Authorization", "Bearer ${tokens.first}")
+            val body = """{"refreshToken":"${currentRefresh.replace("\"", "\\\"")}"}"""
+                .toRequestBody("application/json; charset=utf-8".toMediaType())
+            val request = Request.Builder()
+                .url(baseUrl + "auth/refresh")
+                .post(body)
                 .build()
+
+            val refreshed = runCatching { lazyClient.get().newCall(request).execute() }
+                .getOrNull() ?: return null
+
+            refreshed.use { resp ->
+                val tokens = if (resp.isSuccessful) parseRefresh(resp.body?.string()) else null
+                if (tokens == null) {
+                    tokenStore.clear()
+                    return null
+                }
+                tokenStore.saveTokens(tokens.first, tokens.second)
+                return response.request.newBuilder()
+                    .header("Authorization", "Bearer ${tokens.first}")
+                    .build()
+            }
         }
     }
 

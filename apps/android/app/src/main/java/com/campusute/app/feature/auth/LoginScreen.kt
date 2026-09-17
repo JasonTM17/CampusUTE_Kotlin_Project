@@ -59,7 +59,7 @@ fun LoginScreen(
                     value = state.email,
                     onValueChange = viewModel::onEmailChange,
                     label = "Email",
-                    supportingText = "Demo: student@demo.campusute.vn",
+                    supportingText = if (com.campusute.app.BuildConfig.DEBUG) "Demo: student@demo.campusute.vn" else null,
                 )
                 CampusTextField(
                     value = state.password,
