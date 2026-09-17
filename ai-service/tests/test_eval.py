@@ -5,6 +5,8 @@ ingests the regulation + library + career knowledge the dataset queries.
 Thresholds are gates: citation coverage, tool correctness, refusal safety.
 Report is written to the pytest tmp dir and echoed in the failure message.
 """
+import os
+
 import pytest
 import requests
 
@@ -67,9 +69,16 @@ def _dataset():
 
 @pytest.fixture(scope="module")
 def corpus_ready():
+    # /ingest is token-protected (knowledge-poisoning gate) — the fixture
+    # must present the same dev token the compose stack runs with.
     for title, content in CORPUS:
-        requests.post("http://localhost:8600/ingest",
-                      json={"title": title, "content": content, "visibility": "PUBLIC"}, timeout=10)
+        r = requests.post(
+            "http://localhost:8600/ingest",
+            json={"title": title, "content": content, "visibility": "PUBLIC"},
+            headers={"X-Internal-Token": os.environ.get("AI_INGEST_TOKEN", "dev-ingest-token")},
+            timeout=10,
+        )
+        assert r.status_code == 200, f"corpus ingest failed: {r.status_code} {r.text[:120]}"
 
 
 @requires_stack
