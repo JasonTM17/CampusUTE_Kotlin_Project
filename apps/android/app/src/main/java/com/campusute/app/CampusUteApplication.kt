@@ -4,9 +4,9 @@ import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.BackoffPolicy
 import androidx.work.Configuration
+import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.NetworkType
-import androidx.work.Constraints
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.campusute.app.core.sync.ScheduleSyncWorker
@@ -15,9 +15,12 @@ import java.time.Duration
 import javax.inject.Inject
 
 @HiltAndroidApp
-class CampusUteApplication @Inject constructor(
-    private val hiltWorkerFactory: HiltWorkerFactory,
-) : Application(), Configuration.Provider {
+class CampusUteApplication : Application(), Configuration.Provider {
+
+    // @HiltAndroidApp classes must use FIELD injection (constructor injection
+    // crashes at onCreate — caught on the emulator in the hardening round).
+    @Inject
+    lateinit var hiltWorkerFactory: HiltWorkerFactory
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()

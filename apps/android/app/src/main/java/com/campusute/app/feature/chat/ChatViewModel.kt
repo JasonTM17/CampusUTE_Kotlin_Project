@@ -50,16 +50,18 @@ class ChatViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val reply = try {
-                val envelope = api.aiChat(com.campusute.app.core.network.AiChatRequest(message))
-                val data = envelope.data
-                if (data != null) {
-                    ChatMessage(
-                        text = data.answer,
-                        fromUser = false,
-                        citations = data.citations.map { Citation(it.document ?: "?", it.page ?: 1, it.excerpt ?: "") },
-                    )
-                } else {
-                    ChatMessage(envelope.error?.message ?: "AI không trả lời được lúc này.", fromUser = false)
+                kotlinx.coroutines.withTimeout(65_000) {
+                    val envelope = api.aiChat(com.campusute.app.core.network.AiChatRequest(message))
+                    val data = envelope.data
+                    if (data != null) {
+                        ChatMessage(
+                            text = data.answer,
+                            fromUser = false,
+                            citations = data.citations.map { Citation(it.document ?: "?", it.page ?: 1, it.excerpt ?: "") },
+                        )
+                    } else {
+                        ChatMessage(envelope.error?.message ?: "AI không trả lời được lúc này.", fromUser = false)
+                    }
                 }
             } catch (_: java.io.IOException) {
                 ChatMessage("Không kết nối được trợ lý AI (offline).", fromUser = false)

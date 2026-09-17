@@ -38,6 +38,8 @@ class SessionRepository @Inject constructor(
         }
     } catch (_: java.io.IOException) {
         SessionResult.Failure("Không thể kết nối máy chủ. Kiểm tra mạng và thử lại.")
+    } catch (_: retrofit2.HttpException) {
+        SessionResult.Failure("Email hoặc mật khẩu không đúng.")
     } catch (_: Exception) {
         SessionResult.Failure("Đã xảy ra lỗi. Vui lòng thử lại.")
     }

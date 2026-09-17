@@ -12,22 +12,30 @@ Security invariants (plan Phase 5):
 - permission filtering happens in SQL BEFORE context assembly
 """
 import re
+import unicodedata
 
 from . import config, tools
 
-SCHEDULE_INTENT = re.compile(r"(lịch|schedule|học|tiết|phòng|week|tuần)", re.I)
-GRADES_INTENT = re.compile(r"(bảng điểm|xem điểm|điểm môn|điểm midterm|điểm final|điểm assignment|kết quả học tập|gpa|đã có điểm|có điểm)", re.I)
-REGULATION_INTENT = re.compile(r"(điều kiện|tốt nghiệp|quy chế|regulation|tín chỉ|credit|chuyển ngành|thi lại|học phí|tích lũy|học bổng|nợ môn)", re.I)
-LIBRARY_INTENT = re.compile(r"(thư viện|library|sách|tài liệu tham khảo|mượn|đề thi)", re.I)
-EVENT_INTENT = re.compile(r"(sự kiện|event|clb|câu lạc bộ|workshop|seminar)", re.I)
-CAREER_INTENT = re.compile(r"(việc làm|intern|thực tập|career|cv|doanh nghiệp)", re.I)
-SERVICE_INTENT = re.compile(r"(ticket|hỗ trợ|support|sự cố|báo hỏng)", re.I)
-OTHERS_DATA = re.compile(r"(sinh viên khác|học bạ|student b|other student|grades of|bạn cùng lớp)", re.I)
-STOPWORDS = {"là", "gì", "của", "và", "cho", "tôi", "có", "the", "what", "is", "of", "my"}
+def _deaccent(text: str) -> str:
+    """Vietnamese users often type without diacritics ('hoc' for 'học',
+    'd' for 'đ'); intent matching runs on the deaccented form. 'đ' has no
+    NFD decomposition so it is mapped explicitly."""
+    normalized = unicodedata.normalize("NFD", text.lower()).replace("đ", "d")
+    return "".join(c for c in normalized if unicodedata.category(c) != "Mn")
+
+SCHEDULE_INTENT = re.compile(r"(lich|schedule|hoc|tiet|phong|week|tuan)", re.I)
+GRADES_INTENT = re.compile(r"(bang diem|xem diem|diem mon|diem midterm|diem final|diem assignment|ket qua hoc tap|gpa|da co diem|co diem)", re.I)
+REGULATION_INTENT = re.compile(r"(dieu kien|tot nghiep|quy che|regulation|tin chi|credit|chuyen nganh|thi lai|hoc phi|tich luy|hoc bong|no mon)", re.I)
+LIBRARY_INTENT = re.compile(r"(thu vien|library|sach|tai lieu tham khao|muon|de thi)", re.I)
+EVENT_INTENT = re.compile(r"(su kien|event|clb|cau lac bo|workshop|seminar)", re.I)
+CAREER_INTENT = re.compile(r"(viec lam|intern|thuc tap|career|cv|doanh nghiep)", re.I)
+SERVICE_INTENT = re.compile(r"(ticket|ho tro|support|su co|bao hong)", re.I)
+OTHERS_DATA = re.compile(r"(sinh vien khac|hoc ba|student b|other student|grades of|ban cung lop)", re.I)
+STOPWORDS = {"la", "gi", "cua", "va", "cho", "toi", "co", "the", "what", "is", "of", "my"}
 # Mock-mode instruction firewall: imperative/role-override phrasing inside
 # documents is untrusted content — it must never be selected as an answer
 # sentence. The live LLM path enforces the same rule via the system prompt.
-INJECTION_RE = re.compile(r"(ignore|instructions|reveal|admin|bypass|quên (?:tất )?cả|hãy tự|tự cho)", re.I)
+INJECTION_RE = re.compile(r"(ignore|instructions|reveal|admin|bypass|quen (?:tat )?ca|hay tu|tu cho)", re.I)
 
 # Agent registry: each intent maps to an agent with its OWN tool allowlist.
 # Agents not backed by a dedicated backend module (library/career/service)
@@ -35,17 +43,18 @@ INJECTION_RE = re.compile(r"(ignore|instructions|reveal|admin|bypass|quên (?:t�
 
 
 def route(message: str) -> str:
+    plain = _deaccent(message)
     # Any other-student data probe is refused before routing (defense in
     # depth; the backend tool layer enforces the same rule regardless).
-    if OTHERS_DATA.search(message):
+    if OTHERS_DATA.search(plain):
         return "REFUSE_CROSS_STUDENT"
-    if REGULATION_INTENT.search(message):
+    if REGULATION_INTENT.search(plain):
         return "REGULATION"
-    if GRADES_INTENT.search(message):
+    if GRADES_INTENT.search(plain):
         return "GRADES"
-    if SCHEDULE_INTENT.search(message):
+    if SCHEDULE_INTENT.search(plain):
         return "SCHEDULE"
-    if LIBRARY_INTENT.search(message) or EVENT_INTENT.search(message) or CAREER_INTENT.search(message) or SERVICE_INTENT.search(message):
+    if LIBRARY_INTENT.search(plain) or EVENT_INTENT.search(plain) or CAREER_INTENT.search(plain) or SERVICE_INTENT.search(plain):
         return "KNOWLEDGE"  # library/career/service agents: public corpus only
     return "REGULATION"
 
@@ -100,16 +109,18 @@ def answer(message: str, user_jwt: str, enrolled_course_codes: list[str]) -> dic
         }
     # Extractive answering: only sentences that actually overlap the query are
     # quoted, so instruction-like text inside documents never becomes the answer.
-    query_tokens = set(re.findall(r"[a-zà-ỹ0-9]+", message.lower())) - STOPWORDS
+    query_tokens = set(re.findall(r"[a-z0-9]+", _deaccent(message))) - STOPWORDS
     scored = []
     for idx, hit in enumerate(hits):
-        content = hit["excerpt"]
-        for sentence in re.split(r"(?<=[.!?])\s+", content):
-            tokens = set(re.findall(r"[a-zà-ỹ0-9]+", sentence.lower()))
+        # Score on deaccented text; quote the ORIGINAL sentence verbatim.
+        pairs = list(zip(re.split(r"(?<=[.!?])\s+", hit["excerpt"]),
+                         re.split(r"(?<=[.!?])\s+", _deaccent(hit["excerpt"]))))
+        for original, plain in pairs:
+            tokens = set(re.findall(r"[a-z0-9]+", plain))
             overlap = len(tokens & query_tokens)
-            if overlap == 0 or INJECTION_RE.search(sentence):
+            if overlap == 0 or INJECTION_RE.search(plain):
                 continue  # instruction-like sentences are never answer material
-            scored.append((overlap, idx, sentence.strip()))
+            scored.append((overlap, idx, original.strip()))
     scored.sort(key=lambda t: (-t[0], t[1]))
     per_doc: dict[int, list[str]] = {}
     for _, idx, sentence in scored:

@@ -37,7 +37,13 @@ class AiGatewayController(
     private val enrollments: EnrollmentRepository,
     private val sections: com.campusute.backend.academic.ClassSectionRepository,
 ) {
-    private val rest = RestTemplate()
+    private val rest = RestTemplate().apply {
+        val factory = org.springframework.http.client.SimpleClientHttpRequestFactory().apply {
+            setConnectTimeout(3000)
+            setReadTimeout(60_000)
+        }
+        requestFactory = factory
+    }
 
     data class ChatRequest(val message: String)
     data class CitationDto(val document: String?, val page: Int?, val excerpt: String?, val source: String?)

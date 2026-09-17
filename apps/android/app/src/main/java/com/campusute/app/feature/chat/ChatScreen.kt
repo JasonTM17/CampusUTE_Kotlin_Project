@@ -62,6 +62,12 @@ fun ChatScreen(viewModel: ChatViewModel = hiltViewModel()) {
                 modifier = Modifier.weight(1f),
                 singleLine = true,
                 label = { Text("Hỏi trợ lý AI...") },
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Send,
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSend = { viewModel.send() },
+                ),
             )
             TextButton(onClick = viewModel::send, enabled = !state.busy && state.input.isNotBlank()) {
                 Text("Gửi")
