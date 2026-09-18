@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- CampusUTE logo mark — original artwork, MIT licensed.
+       Motif: graduation mortarboard + connectivity arcs (smart campus).
+       Colors = app design tokens: primary #0B5FA5, accent #F59E0B. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1173C7"/>
+      <stop offset="1" stop-color="#0B5FA5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- rounded badge -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="url(#bg)"/>
+
+  <!-- connectivity arcs (top-right, signal motif) -->
+  <g fill="none" stroke="#F59E0B" stroke-linecap="round">
+    <path d="M 330 128 A 96 96 0 0 1 396 196" stroke-width="20" opacity="0.95"/>
+    <path d="M 312 168 A 60 60 0 0 1 356 214" stroke-width="20" opacity="0.75"/>
+  </g>
+  <circle cx="296" cy="216" r="16" fill="#F59E0B"/>
+
+  <!-- mortarboard -->
+  <g fill="#FFFFFF">
+    <!-- board (diamond) -->
+    <path d="M 256 196 L 400 262 L 256 328 L 112 262 Z"/>
+    <!-- body -->
+    <path d="M 186 292 L 186 366 Q 256 404 326 366 L 326 292 L 256 326 Z" opacity="0.92"/>
+    <!-- tassel stem + tip -->
+    <rect x="388" y="262" width="12" height="76" rx="6" fill="#F59E0B"/>
+    <circle cx="394" cy="348" r="14" fill="#F59E0B"/>
+  </g>
+
+  <!-- circuit nodes (smart campus) -->
+  <g fill="#FFFFFF" opacity="0.55">
+    <circle cx="120" cy="140" r="9"/>
+    <circle cx="168" cy="104" r="6"/>
+    <path d="M 120 140 L 168 104" stroke="#FFFFFF" stroke-width="4" opacity="0.5"/>
+  </g>
+</svg>

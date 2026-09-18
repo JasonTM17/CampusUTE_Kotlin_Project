@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- CampusUTE monochrome layer for Android 13+ themed icons -->
+    <path
+        android:pathData="M 66,40 A 12,12 0 0 1 75,49"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M 62.5,44.5 A 7.5,7.5 0 0 1 70.5,52.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="3.2"
+        android:strokeLineCap="round"/>
+    <path
+        android:pathData="M 60,49 m -2.2,0 a 2.2,2.2 0 1 1 4.4,0 a 2.2,2.2 0 1 1 -4.4,0"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M 54,42 L 71,49.5 L 54,57 L 37,49.5 Z"
+        android:fillColor="#FFFFFF"/>
+    <path
+        android:pathData="M 44.5,53.5 L 44.5,61.5 Q 54,66.5 63.5,61.5 L 63.5,53.5 L 54,57.8 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.92"/>
+</vector>

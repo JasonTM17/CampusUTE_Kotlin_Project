@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🎓 CampusUTE
+<img src="assets/branding/logo-mark.svg" width="96" alt="CampusUTE logo"/>
+
+# CampusUTE
 
 **AI-Powered Smart Digital Campus Platform — HCMUTE**
 
@@ -117,7 +119,7 @@ docker compose --profile core up -d  # postgres+pgvector, redis, minio, backend,
 | 4 | Academic core (assignment, grade/GPA, QR attendance, events) | ✅ DONE |
 | 5 | AI core: agents + RAG + citations | ✅ DONE |
 | 6 | 8 agents + eval harness + notes AI | ✅ DONE |
-| 7 | Secondary modules + Kafka/ClickHouse analytics | PLANNED |
+| 7 | Secondary modules + Kafka/ClickHouse analytics | 🗂 SCOPED OUT of v1.0 — roadmap tương lai |
 | 8 | Hardening, docs, demo GIF, release v1.0.0 | PLANNED |
 
 ## 🔐 Security & privacy
