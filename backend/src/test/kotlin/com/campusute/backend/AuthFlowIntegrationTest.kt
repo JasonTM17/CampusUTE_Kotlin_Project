@@ -302,6 +302,75 @@ class AuthFlowIntegrationTest {
         return HttpEntity("{}", headers)
     }
 
+    @Test
+    @Order(11)
+    fun `assignments lifecycle - create notify submit isolate`() {
+        val section = sectionsRepo.findAll().first()
+        val lecturerHeaders = authHeaders(rawLogin("lecturer@demo.campusute.vn", "Demo#Lecturer1")["accessToken"].toString()).apply {
+            contentType = MediaType.APPLICATION_JSON
+        }
+        val created = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/assignments",
+            HttpMethod.POST,
+            HttpEntity("""{"sectionId":"${section.id}","title":"Lab 1: ERD","description":"Vẽ ERD","dueAt":"2026-12-01T00:00:00Z"}""", lecturerHeaders),
+        )
+        assertEquals(200, created.statusCode.value(), created.body.toString())
+        val assignmentId = created.body!!.data!!["assignmentId"] as String
+
+        val studentHeaders = authHeaders(login().data!!["accessToken"].toString()).apply {
+            contentType = MediaType.APPLICATION_JSON
+        }
+        // student sees the new assignment in /me
+        val mine = rest.exchange<ApiEnvelope<List<Map<String, Any?>>>>(
+            "/api/v1/assignments/me",
+            HttpMethod.GET,
+            HttpEntity<Void>(studentHeaders),
+        )
+        assertEquals(200, mine.statusCode.value())
+        val rows = mine.body!!.data!!
+        assertTrue(rows.any { it["id"] == assignmentId }, "student must see the assignment")
+
+        // student submits (idempotent one-per-student, resubmit updates)
+        assertEquals(200, rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/assignments/$assignmentId/submit",
+            HttpMethod.POST,
+            HttpEntity("""{"note":"Đã vẽ xong ERD"}""", studentHeaders),
+        ).statusCode.value())
+        assertEquals(200, rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/assignments/$assignmentId/submit",
+            HttpMethod.POST,
+            HttpEntity("""{"note":"Bản chỉnh sửa"}""", studentHeaders),
+        ).statusCode.value())
+        assertEquals(1, countSubmissions(assignmentId), "one submission row per student")
+    }
+
+    @Test
+    @Order(12)
+    fun `notification center - inbox and read`() {
+        val headers = authHeaders(login().data!!["accessToken"].toString())
+        val inbox = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/notifications",
+            HttpMethod.GET,
+            HttpEntity<Void>(headers),
+        )
+        assertEquals(200, inbox.statusCode.value())
+        @Suppress("UNCHECKED_CAST")
+        val list = inbox.body!!.data!!["notifications"] as List<Map<String, Any?>>
+        assertTrue(list.isNotEmpty(), "login + assignment events must have produced notifications")
+        val first = list.first()["id"] as String
+        assertEquals(200, rest.exchange<ApiEnvelope<Map<String, Any?>>>(
+            "/api/v1/notifications/$first/read",
+            HttpMethod.POST,
+            HttpEntity<Void>(headers),
+        ).statusCode.value())
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    lateinit var submissionRepo: com.campusute.backend.academic.SubmissionRepository
+
+    private fun countSubmissions(assignmentId: String): Int =
+        submissionRepo.findByAssignmentId(java.util.UUID.fromString(assignmentId)).size
+
     private fun rawLogin(email: String, password: String): Map<String, Any?> {
         val response = rest.exchange<ApiEnvelope<Map<String, Any?>>>(
             "/api/v1/auth/login",

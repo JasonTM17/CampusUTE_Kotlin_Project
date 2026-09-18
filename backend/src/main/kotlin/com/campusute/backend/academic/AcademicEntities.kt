@@ -85,4 +85,5 @@ interface EnrollmentRepository : JpaRepository<Enrollment, UUID> {
     fun sectionIdsOfStudent(@Param("studentId") studentId: UUID): List<UUID>
 
     fun findByStudentId(studentId: UUID): List<Enrollment>
+    fun findByClassSectionId(classSectionId: UUID): List<Enrollment>
 }

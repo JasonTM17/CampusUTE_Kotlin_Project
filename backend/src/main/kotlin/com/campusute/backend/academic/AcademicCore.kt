@@ -51,6 +51,7 @@ interface GradeRepository : JpaRepository<Grade, UUID> {
 class GradeController(
     private val grades: GradeRepository,
     private val courses: CourseRepository,
+    private val notifications: com.campusute.backend.notification.NotificationService,
 ) {
     data class GradeComponentDto(val component: String, val score: Double, val weight: Double)
     data class CourseGradesDto(val courseId: UUID, val courseCode: String, val courseName: String, val components: List<GradeComponentDto>)
@@ -116,6 +117,12 @@ class GradeController(
                 ),
             )
         }
+        notifications.notify(
+            body.studentId,
+            "GRADE",
+            "Điểm mới: ${course.code} · ${body.component}",
+            "Bạn được cập nhật ${body.component} = ${body.score} cho môn ${course.name}.",
+        )
         return ApiEnvelope.ok(mapOf("gradeId" to saved.id.toString(), "status" to "SAVED"))
     }
 }
