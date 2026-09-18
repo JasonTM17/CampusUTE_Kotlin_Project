@@ -21,6 +21,11 @@ import com.campusute.app.core.network.TaskChangesDto
 import com.campusute.app.core.network.TaskDto
 import com.campusute.app.core.network.TokenResponseDto
 import com.campusute.app.core.network.UserDto
+import com.campusute.app.core.network.AssignmentDto
+import com.campusute.app.core.network.NoteDto
+import com.campusute.app.core.network.NoteRequestDto
+import com.campusute.app.core.network.SubmitAssignmentDto
+import com.campusute.app.core.network.InboxDto
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
@@ -83,6 +88,12 @@ class SyncEngineAirplaneModeTest {
         override suspend fun me(): ApiEnvelopeDto<UserDto> = ApiEnvelopeDto()
         override suspend fun aiChat(body: com.campusute.app.core.network.AiChatRequest): ApiEnvelopeDto<com.campusute.app.core.network.AiChatResponse> =
             ApiEnvelopeDto(data = com.campusute.app.core.network.AiChatResponse("ok"))
+        override suspend fun assignmentsMe(): ApiEnvelopeDto<List<AssignmentDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun submitAssignment(id: String, body: SubmitAssignmentDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notes(): ApiEnvelopeDto<List<NoteDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun createNote(body: NoteRequestDto): ApiEnvelopeDto<NoteDto> = ApiEnvelopeDto()
+        override suspend fun markNotificationRead(id: String): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notifications(): ApiEnvelopeDto<InboxDto> = ApiEnvelopeDto(data = InboxDto())
         override suspend fun scheduleSessions(from: String, to: String): ApiEnvelopeDto<List<ScheduleSessionDto>> = ApiEnvelopeDto()
 
         override suspend fun taskSync(body: SyncRequestDto): ApiEnvelopeDto<SyncResponseDto> {
@@ -105,6 +116,8 @@ class SyncEngineAirplaneModeTest {
         }
         override suspend fun taskChanges(since: String): ApiEnvelopeDto<TaskChangesDto> =
             ApiEnvelopeDto(data = TaskChangesDto(serverTasks.toList(), "2026-09-16T00:00:01Z"))
+
+
     }
 
     @Test

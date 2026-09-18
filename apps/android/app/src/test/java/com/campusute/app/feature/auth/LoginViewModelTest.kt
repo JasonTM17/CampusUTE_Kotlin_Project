@@ -8,6 +8,11 @@ import com.campusute.app.core.network.LoginRequestDto
 import com.campusute.app.core.network.RefreshRequestDto
 import com.campusute.app.core.network.TokenResponseDto
 import com.campusute.app.core.network.UserDto
+import com.campusute.app.core.network.AssignmentDto
+import com.campusute.app.core.network.NoteDto
+import com.campusute.app.core.network.NoteRequestDto
+import com.campusute.app.core.network.SubmitAssignmentDto
+import com.campusute.app.core.network.InboxDto
 import com.campusute.app.core.security.TokenStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,7 +54,7 @@ class LoginViewModelTest {
         }
         override suspend fun refresh(body: RefreshRequestDto) = TODO()
         override suspend fun logout(body: RefreshRequestDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
-        override suspend fun me() = ApiEnvelopeDto(data = user)
+        override suspend fun me(): ApiEnvelopeDto<UserDto> = ApiEnvelopeDto(data = user)
         override suspend fun aiChat(body: com.campusute.app.core.network.AiChatRequest): ApiEnvelopeDto<com.campusute.app.core.network.AiChatResponse> =
             ApiEnvelopeDto(data = com.campusute.app.core.network.AiChatResponse("ok"))
         override suspend fun scheduleSessions(
@@ -60,6 +65,12 @@ class LoginViewModelTest {
             ApiEnvelopeDto(data = com.campusute.app.core.network.TaskChangesDto(emptyList(), "1970-01-01T00:00:00Z"))
         override suspend fun taskSync(body: com.campusute.app.core.network.SyncRequestDto): ApiEnvelopeDto<com.campusute.app.core.network.SyncResponseDto> =
             ApiEnvelopeDto(data = com.campusute.app.core.network.SyncResponseDto(emptyList(), "1970-01-01T00:00:00Z"))
+        override suspend fun assignmentsMe(): ApiEnvelopeDto<List<AssignmentDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun submitAssignment(id: String, body: SubmitAssignmentDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notes(): ApiEnvelopeDto<List<NoteDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun createNote(body: NoteRequestDto): ApiEnvelopeDto<NoteDto> = ApiEnvelopeDto()
+        override suspend fun markNotificationRead(id: String): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notifications(): ApiEnvelopeDto<InboxDto> = ApiEnvelopeDto(data = InboxDto())
     }
     private fun viewModel(api: CampusApi, store: TokenStore) =
         LoginViewModel(SessionRepository(api, store))

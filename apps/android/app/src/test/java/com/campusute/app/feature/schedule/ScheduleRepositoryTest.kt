@@ -12,6 +12,11 @@ import com.campusute.app.core.network.RefreshRequestDto
 import com.campusute.app.core.network.ScheduleSessionDto
 import com.campusute.app.core.network.TokenResponseDto
 import com.campusute.app.core.network.UserDto
+import com.campusute.app.core.network.AssignmentDto
+import com.campusute.app.core.network.NoteDto
+import com.campusute.app.core.network.NoteRequestDto
+import com.campusute.app.core.network.SubmitAssignmentDto
+import com.campusute.app.core.network.InboxDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -77,6 +82,14 @@ class ScheduleRepositoryTest {
                 Behaviour.OFFLINE -> throw IOException("offline")
                 Behaviour.ERROR -> ApiEnvelopeDto(error = ApiErrorDto("SYSTEM_INTERNAL", "boom"))
             }
+
+        override suspend fun assignmentsMe(): ApiEnvelopeDto<List<AssignmentDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun submitAssignment(id: String, body: SubmitAssignmentDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notes(): ApiEnvelopeDto<List<NoteDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun createNote(body: NoteRequestDto): ApiEnvelopeDto<NoteDto> = ApiEnvelopeDto()
+        override suspend fun markNotificationRead(id: String): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notifications(): ApiEnvelopeDto<InboxDto> = ApiEnvelopeDto(data = InboxDto())
+
     }
     @Before fun setUp() { Dispatchers.setMain(StandardTestDispatcher()) }
     @After fun tearDown() { Dispatchers.resetMain() }

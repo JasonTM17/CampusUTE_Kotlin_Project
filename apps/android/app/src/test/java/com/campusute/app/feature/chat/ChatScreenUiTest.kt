@@ -9,10 +9,15 @@ import com.campusute.app.core.data.SessionRepository
 import com.campusute.app.core.network.ApiEnvelopeDto
 import com.campusute.app.core.network.AiChatRequest
 import com.campusute.app.core.network.AiChatResponse
+import com.campusute.app.core.network.AssignmentDto
 import com.campusute.app.core.network.CampusApi
+import com.campusute.app.core.network.InboxDto
 import com.campusute.app.core.network.LoginRequestDto
+import com.campusute.app.core.network.NoteDto
+import com.campusute.app.core.network.NoteRequestDto
 import com.campusute.app.core.network.RefreshRequestDto
 import com.campusute.app.core.network.ScheduleSessionDto
+import com.campusute.app.core.network.SubmitAssignmentDto
 import com.campusute.app.core.network.TaskChangesDto
 import com.campusute.app.core.network.TokenResponseDto
 import com.campusute.app.core.network.UserDto
@@ -75,6 +80,12 @@ class ChatScreenUiTest {
         override suspend fun taskChanges(since: String): ApiEnvelopeDto<TaskChangesDto> = ApiEnvelopeDto()
         override suspend fun taskSync(body: com.campusute.app.core.network.SyncRequestDto): ApiEnvelopeDto<com.campusute.app.core.network.SyncResponseDto> = ApiEnvelopeDto()
         override suspend fun aiChat(body: AiChatRequest): ApiEnvelopeDto<AiChatResponse> = throw IOException("airplane mode")
+        override suspend fun assignmentsMe(): ApiEnvelopeDto<List<AssignmentDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun submitAssignment(id: String, body: SubmitAssignmentDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notes(): ApiEnvelopeDto<List<NoteDto>> = ApiEnvelopeDto(data = emptyList())
+        override suspend fun createNote(body: NoteRequestDto): ApiEnvelopeDto<NoteDto> = ApiEnvelopeDto()
+        override suspend fun markNotificationRead(id: String): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = emptyMap())
+        override suspend fun notifications(): ApiEnvelopeDto<InboxDto> = ApiEnvelopeDto(data = InboxDto())
     }
 
     @Test
