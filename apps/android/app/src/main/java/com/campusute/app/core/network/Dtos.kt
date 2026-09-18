@@ -118,3 +118,50 @@ data class AiChatResponse(
     val citations: List<AiCitationDto> = emptyList(),
     val tools: List<String> = emptyList(),
 )
+
+// ---- assignments + notes + notifications (Sprint S1/S2/S4) ----
+
+@Serializable
+data class AssignmentDto(
+    val id: String,
+    val sectionCode: String = "",
+    val courseCode: String = "",
+    val title: String,
+    val description: String = "",
+    val dueAt: String? = null,
+    val submitted: Boolean = false,
+    val submissionCount: Int = -1,
+)
+
+@Serializable
+data class SubmitAssignmentDto(val note: String)
+
+@Serializable
+data class NoteDto(
+    val id: String,
+    val title: String,
+    val content: String = "",
+    val updatedAt: String,
+)
+
+@Serializable
+data class NoteRequestDto(val title: String, val content: String)
+
+@Serializable
+data class NotificationItemDto(
+    val id: String,
+    val type: String,
+    val title: String,
+    val body: String = "",
+    val read: Boolean = false,
+    val createdAt: String,
+)
+
+@Serializable
+data class InboxDto(val notifications: List<NotificationItemDto> = emptyList(), val unread: Long = 0)
+
+@Serializable
+data class SummarizeRequestDto(val title: String, val content: String)
+
+@Serializable
+data class SummarizeResponseDto(val summary: String, val proposed: Boolean)

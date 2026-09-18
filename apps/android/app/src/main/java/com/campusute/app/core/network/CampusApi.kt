@@ -34,4 +34,25 @@ interface CampusApi {
 
     @POST("ai/chat")
     suspend fun aiChat(@Body body: AiChatRequest): ApiEnvelopeDto<AiChatResponse>
+
+    @GET("assignments/me")
+    suspend fun assignmentsMe(): ApiEnvelopeDto<List<AssignmentDto>>
+
+    @POST("assignments/{id}/submit")
+    suspend fun submitAssignment(
+        @retrofit2.http.Path("id") id: String,
+        @Body body: SubmitAssignmentDto,
+    ): ApiEnvelopeDto<Map<String, String>>
+
+    @GET("notes")
+    suspend fun notes(): ApiEnvelopeDto<List<NoteDto>>
+
+    @POST("notes")
+    suspend fun createNote(@Body body: NoteRequestDto): ApiEnvelopeDto<NoteDto>
+
+    @POST("notifications/{id}/read")
+    suspend fun markNotificationRead(@retrofit2.http.Path("id") id: String): ApiEnvelopeDto<Map<String, String>>
+
+    @GET("notifications")
+    suspend fun notifications(): ApiEnvelopeDto<InboxDto>
 }
