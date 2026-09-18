@@ -10,8 +10,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -26,7 +26,7 @@ import com.campusute.app.feature.auth.LoginScreen
 import com.campusute.app.feature.chat.ChatScreen
 import com.campusute.app.feature.schedule.TimetableScreen
 
-/** Signed-in shell: top bar (logout) + bottom tabs (home / timetable / AI chat). */
+/** Signed-in shell: top bar (logout) + bottom tabs (home / timetable / notifications / AI chat). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampusApp(
@@ -66,7 +66,7 @@ fun HomeShell(
     onLogout: () -> Unit,
     sessionRepository: SessionRepository,
 ) {
-    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf(0) }
+    var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
     Scaffold(
         topBar = {
             CampusTopBar(
@@ -96,6 +96,12 @@ fun HomeShell(
                 NavigationBarItem(
                     selected = tab == 2,
                     onClick = { tab = 2 },
+                    icon = { Text("🔔") },
+                    label = { Text("Thông báo") },
+                )
+                NavigationBarItem(
+                    selected = tab == 3,
+                    onClick = { tab = 3 },
                     icon = { Text("🤖") },
                     label = { Text("Trợ lý AI") },
                 )
@@ -106,7 +112,8 @@ fun HomeShell(
             when (tab) {
                 0 -> HomeScreen()
                 1 -> TimetableScreen(hiltViewModel())
-                else -> ChatScreen(hiltViewModel())
+                2 -> NotificationList(hiltViewModel())
+                else -> com.campusute.app.feature.chat.ChatScreen(hiltViewModel())
             }
         }
     }
