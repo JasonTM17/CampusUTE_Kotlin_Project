@@ -32,12 +32,20 @@ class HomeViewModel @Inject constructor(
     private val _unread = MutableStateFlow(0L)
     val unread: StateFlow<Long> = _unread.asStateFlow()
 
+    private val _submitBusy = MutableStateFlow(false)
+    val submitBusy: StateFlow<Boolean> = _submitBusy.asStateFlow()
+
     init {
         viewModelScope.launch {
-            // Soft-fail: shell renders generic greeting when /me is unreachable.
             runCatching { api.me() }.onSuccess { envelope ->
                 _user.value = envelope.data
             }
+            refreshData()
+        }
+    }
+
+    fun refreshData() {
+        viewModelScope.launch {
             runCatching { api.assignmentsMe() }.onSuccess { envelope ->
                 _assignments.value = envelope.data ?: emptyList()
             }
@@ -48,5 +56,25 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun submitAssignment(assignmentId: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = runCatching {
+                api.submitAssignment(assignmentId, com.campusute.app.core.network.SubmitAssignmentDto(note = "Nộp qua app"))
+            }.isSuccess
+            refreshData()
+            onResult(ok)
+        }
+    }
+
+    fun markRead(notification: NotificationItemDto) {
+        viewModelScope.launch {
+            runCatching { api.markNotificationRead(notification.id) }
+        }
+    }
+
     fun logout() = sessionRepository.logout()
+
+    companion object {
+        private const val TAG = "HomeViewModel"
+    }
 }
