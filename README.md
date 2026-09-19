@@ -15,10 +15,11 @@ Kotlin · Jetpack Compose · Spring Boot · FastAPI + OpenAI Agents SDK · RAG �
 
 </div>
 
-> 🚧 **Status: Foundation phase.** Architecture and roadmap are complete (see
-> [Plan overview](docs/architecture/system-overview.md)); implementation lands
-> phase by phase — this README is updated honestly at each milestone
-> (DONE/PLANNED, no fake completeness).
+> ✅ **Status: v1.0.0 shipped.** Platform phases 0–8 of the roadmap below are
+> DONE and verified end-to-end on an emulator against a live docker stack
+> (demo GIF + screenshots below). Scoped out of v1.0 honestly and kept on the
+> roadmap: secondary modules (map/library/career/analytics), Kafka/ClickHouse
+> event analytics, SSE chat streaming, offline notes sync.
 
 ## ✨ What is CampusUTE?
 
@@ -32,11 +33,13 @@ production-minded platform:
   RAG over university regulations with **mandatory citations** (document,
   page, excerpt).
 - 🧠 **Smart Study Planner, Notes + AI** (summarize / flashcards / quiz —
-  propose-only, user confirms).
+  propose-only, user confirms). Notes CRUD is remote-first (`/api/v1/notes`);
+  the offline-first Room SSOT applies to the schedule/timetable (offline notes
+  sync is on the roadmap).
 - ✅ **Secure QR attendance** — short-lived rotating tokens signed server-side,
   anti-replay nonce; nothing trusted from the client.
 - 📊 **Event-driven analytics** — Transactional Outbox → Kafka → ClickHouse
-  (optional `analytics` compose profile; core runs fine without it).
+  (architecture ready; SCOPED OUT of v1.0 — core runs fine without it).
 - 🔐 **RBAC (6 roles) + ABAC**, JWT with refresh rotation, Argon2, audit logs,
   rate limiting, threat model documented.
 
@@ -47,7 +50,7 @@ flowchart LR
     subgraph Client
         A["Android App<br/>Kotlin + Compose<br/>Room SSOT · WorkManager"]
     end
-    subgraph Platform["Monorepo — docker compose profiles: core | analytics"]
+    subgraph Platform["Monorepo — docker compose (core services)"]
         B["core-api<br/>Kotlin · Spring Boot<br/>REST /api/v1 · SSE"]
         C["ai-service<br/>Python · FastAPI<br/>OpenAI Agents SDK"]
         D[("PostgreSQL<br/>+ pgvector")]
@@ -79,12 +82,12 @@ CampusUTE_Kotlin_Project/
 ├── backend/               # Kotlin Spring Boot modular monolith (/api/v1)
 ├── ai-service/            # Python FastAPI + OpenAI Agents SDK (RAG, tools)
 ├── packages/api-contracts/  # Frozen OpenAPI snapshot shared by 3 codebases
-├── deploy/                # docker-compose (profiles: core | analytics)
+├── deploy/                # reserved for deployment overlays (compose file at repo root)
 ├── database/              # migrations are in backend (Flyway); seeds & diagrams
 ├── docs/                  # architecture, ai, security, adr, demo
 ├── assets/                # demo GIF, diagrams, screenshots (regenerable)
 ├── scripts/               # dev scripts (secret-scan, seed, demo, diagrams)
-└── .github/workflows/     # repo-guard CI, android/backend/ai CI, release
+└── .github/workflows/     # repo-guard CI, android/backend/ai CI, release (tag-gated)
 ```
 
 ## 🚀 Getting started
@@ -96,17 +99,35 @@ Prerequisites: **Docker**, **JDK 17/21/24** (Gradle 8.14 — *not* JDK 26),
 git clone https://github.com/JasonTM17/CampusUTE_Kotlin_Project.git
 cd CampusUTE_Kotlin_Project
 cp .env.example .env                 # fill in only what you need; never commit it
-docker compose --profile core up -d  # postgres+pgvector, redis, minio, backend, ai
+docker compose up -d                 # postgres+pgvector, redis, minio, backend, ai
 ```
 
-- Backend API: http://localhost:8080/swagger-ui (OpenAPI: `/v3/api-docs`)
+- Backend API: http://localhost:18080/swagger-ui (OpenAPI: `/v3/api-docs`)
 - AI service health: http://localhost:8600/health
-- Android: open `apps/android` in Android Studio → run `app` (demo accounts in
-  `README` demo section once Phase 1 lands; dev-only, disabled in release).
+- Android: open `apps/android` in Android Studio → run `app` (demo accounts
+  below; dev-only, synthetic data, disabled in release builds).
 
 > AI works out of the box in **mock/replay mode** (no API key needed). Set
 > `OPENAI_API_KEY` in `.env` to enable live models — the key never enters the
 > APK.
+
+## 📸 Demo
+
+Full demo flow (login → bell mark-read → notes CRUD with propose-only AI
+summarize → timetable → cited AI chat), recorded on the API-35 emulator
+against the live docker stack:
+
+![CampusUTE demo flow](assets/demo/demo.gif)
+
+| Login | Timetable (offline-first) |
+|---|---|
+| ![Login screen](assets/screenshots/login.png) | ![Timetable](assets/screenshots/timetable.png) |
+| **Notes with propose-only AI summarize** | **AI chat with mandatory citations** |
+| ![Notes AI summarize](assets/screenshots/notes-ai-summarize.png) | ![AI chat citations](assets/screenshots/ai-chat-citations.png) |
+
+Dev-only demo accounts (synthetic seed data — see `backend` seeder):
+`student@demo.campusute.vn` / `Demo#Student1`,
+`lecturer@demo.campusute.vn` / `Demo#Lecturer1`.
 
 ## 🗺 Roadmap
 
@@ -120,7 +141,7 @@ docker compose --profile core up -d  # postgres+pgvector, redis, minio, backend,
 | 5 | AI core: agents + RAG + citations | ✅ DONE |
 | 6 | 8 agents + eval harness + notes AI | ✅ DONE |
 | 7 | Secondary modules + Kafka/ClickHouse analytics | 🗂 SCOPED OUT of v1.0 — roadmap tương lai |
-| 8 | Hardening, docs, demo GIF, release v1.0.0 | PLANNED |
+| 8 | Hardening, docs, demo GIF, release v1.0.0 | ✅ DONE |
 
 ## 🔐 Security & privacy
 

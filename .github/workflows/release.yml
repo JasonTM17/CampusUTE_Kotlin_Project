@@ -1,0 +1,111 @@
+name: release
+
+# Closeout plan 260919-0837 phase 6 (R-H):
+# - `workflow_dispatch` = pre-tag verification run on main: proves the ghcr
+#   packages:write path and both Dockerfiles build WHILE the tag is still
+#   avoidable (first-run failures must not force a re-tag).
+# - tag push `v*` = the real release: push ghcr images + attach the APK.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  verify:
+    name: Pre-tag verification (dispatch only)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ghcr login (proves packages:write scope)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build backend image
+        run: docker build -t campusute-backend:verify ./backend
+
+      - name: Build ai-service image
+        run: docker build -t campusute-ai:verify ./ai-service
+
+      - name: ghcr push permission probe
+        run: |
+          docker tag campusute-backend:verify \
+            "ghcr.io/${{ github.repository_owner }}/campusute-backend:verify-dispatch"
+          docker push \
+            "ghcr.io/${{ github.repository_owner }}/campusute-backend:verify-dispatch"
+          echo "verify: packages:write OK + both images build"
+
+  images:
+    name: Push ghcr images (tag only)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push backend image
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          TAG="${{ github.ref_name }}"
+          docker build \
+            -t "ghcr.io/$OWNER/campusute-backend:$TAG" \
+            -t "ghcr.io/$OWNER/campusute-backend:latest" \
+            ./backend
+          docker push "ghcr.io/$OWNER/campusute-backend:$TAG"
+          docker push "ghcr.io/$OWNER/campusute-backend:latest"
+
+      - name: Build and push ai-service image
+        run: |
+          OWNER="${{ github.repository_owner }}"
+          TAG="${{ github.ref_name }}"
+          docker build \
+            -t "ghcr.io/$OWNER/campusute-ai:$TAG" \
+            -t "ghcr.io/$OWNER/campusute-ai:latest" \
+            ./ai-service
+          docker push "ghcr.io/$OWNER/campusute-ai:$TAG"
+          docker push "ghcr.io/$OWNER/campusute-ai:latest"
+
+  apk:
+    name: Build APK + create release (tag only)
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Assemble debug APK
+        run: |
+          cd apps/android
+          ./gradlew :app:assembleDebug --no-daemon --console=plain
+
+      - name: Rename APK
+        run: |
+          cp apps/android/app/build/outputs/apk/debug/app-debug.apk \
+            "campusute-${{ github.ref_name }}.apk"
+
+      - name: Create GitHub release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "campusute-${{ github.ref_name }}.apk"
+          generate_release_notes: true
+          fail_on_unmatched_files: true
