@@ -49,6 +49,9 @@ class AiGatewayController(
     data class CitationDto(val document: String?, val page: Int?, val excerpt: String?, val source: String?)
     data class ChatResponse(val answer: String, val citations: List<CitationDto> = emptyList(), val tools: List<String> = emptyList())
 
+    data class SummarizeRequest(val title: String = "", val content: String)
+    data class SummarizeResponse(val summary: String = "", val proposed: Boolean = false)
+
     @Operation(summary = "Campus assistant (RAG + tools, re-authorized here)")
     @PostMapping("/chat")
     fun chat(
@@ -82,6 +85,37 @@ class AiGatewayController(
             // Bounded subsystem (plan §117): campus features keep working
             // when the AI service is unavailable.
             ApiEnvelope.ok(ChatResponse("Trợ lý AI tạm không khả dụng — các tính năng khác vẫn hoạt động bình thường."))
+        }
+    }
+
+    @Operation(summary = "AI tóm tắt ghi chú (propose-only — app chỉ chèn sau khi user xác nhận)")
+    @PostMapping("/summarize")
+    fun summarize(
+        @RequestHeader("Authorization") authorization: String,
+        @RequestBody body: SummarizeRequest,
+    ): ApiEnvelope<SummarizeResponse> {
+        val userId = currentUserUuid() ?: throw ApiException(ErrorCode.AUTH_TOKEN_INVALID, "Phiên không hợp lệ.")
+        val content = body.content.trim()
+        if (content.isBlank() || content.length > 50_000) {
+            throw ApiException(ErrorCode.VALIDATION_FAILED, "Nội dung ghi chú không hợp lệ.")
+        }
+        val headers = HttpHeaders().apply {
+            contentType = MediaType.APPLICATION_JSON
+            set("Authorization", authorization)
+            set("X-Acting-User", userId.toString())
+            if (internalToken.isNotBlank()) set("X-Internal-Token", internalToken)
+        }
+        return try {
+            val response = rest.exchange(
+                "$aiBaseUrl/summarize",
+                HttpMethod.POST,
+                HttpEntity(mapOf("title" to body.title, "content" to content), headers),
+                SummarizeResponse::class.java,
+            )
+            ApiEnvelope.ok(response.body ?: SummarizeResponse("", false))
+        } catch (_: Exception) {
+            // Bounded subsystem (ADR-0004): notes keep working without AI.
+            ApiEnvelope.ok(SummarizeResponse("AI tóm tắt tạm không khả dụng — bạn vẫn chỉnh ghi chú thủ công bình thường.", false))
         }
     }
 
