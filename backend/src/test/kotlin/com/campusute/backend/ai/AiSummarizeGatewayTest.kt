@@ -77,9 +77,13 @@ class AiSummarizeGatewayTest {
 
     @Test
     @Order(1)
-    fun `summarize without jwt is rejected at the gateway with 401`() {
-        val response = summarize("""{"content":"Đây là ghi chú cần tóm tắt."}""", jsonHeaders())
-        assertEquals(401, response.statusCode.value(), response.body.toString())
+    fun `summarize with garbage jwt is rejected at the gateway with 401`() {
+        // Missing header -> Spring 400 before the controller; a PRESENT but
+        // invalid JWT must hit the gateway's own auth check (currentUserUuid).
+        val headers = HttpHeaders().apply { set("Authorization", "Bearer not-a-jwt") }
+        val response = summarize("""{"content":"Đây là ghi chú cần tóm tắt."}""", headers)
+        assertEquals(401, response.statusCode.value(), response.body?.toString())
+        assertEquals("AUTH_TOKEN_INVALID", response.body?.error?.code)
     }
 
     @Test
