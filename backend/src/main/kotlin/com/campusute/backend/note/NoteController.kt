@@ -29,8 +29,9 @@ class Note(
     @Column(name = "user_id", nullable = false) val userId: UUID,
     @Column(nullable = false) var title: String,
     @Column(nullable = false) var content: String = "",
-    // JPA-managed (no insertable/updatable override): the DB has no default,
-    // so entity-owned timestamps keep create/update rows from regressing to EPOCH.
+    // JPA-managed (no insertable/updatable override): keep the entity field in
+    // sync with the DB default (V5 sets `DEFAULT now()`) so create/update
+    // responses never regress to EPOCH before the row is re-read.
     @Column(name = "updated_at", nullable = false)
     var updatedAt: Instant = Instant.now(),
 )
