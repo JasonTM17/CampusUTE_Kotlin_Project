@@ -38,10 +38,11 @@ jobs:
 
       - name: ghcr push permission probe
         run: |
+          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           docker tag campusute-backend:verify \
-            "ghcr.io/${{ github.repository_owner }}/campusute-backend:verify-dispatch"
+            "ghcr.io/$OWNER/campusute-backend:verify-dispatch"
           docker push \
-            "ghcr.io/${{ github.repository_owner }}/campusute-backend:verify-dispatch"
+            "ghcr.io/$OWNER/campusute-backend:verify-dispatch"
           echo "verify: packages:write OK + both images build"
 
   images:
@@ -59,7 +60,8 @@ jobs:
 
       - name: Build and push backend image
         run: |
-          OWNER="${{ github.repository_owner }}"
+          # ghcr requires lowercase repository names; repository_owner may be mixed-case.
+          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           TAG="${{ github.ref_name }}"
           docker build \
             -t "ghcr.io/$OWNER/campusute-backend:$TAG" \
@@ -70,7 +72,7 @@ jobs:
 
       - name: Build and push ai-service image
         run: |
-          OWNER="${{ github.repository_owner }}"
+          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           TAG="${{ github.ref_name }}"
           docker build \
             -t "ghcr.io/$OWNER/campusute-ai:$TAG" \
