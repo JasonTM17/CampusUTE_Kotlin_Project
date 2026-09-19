@@ -2,7 +2,10 @@ package com.campusute.app.feature.appshell
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -15,7 +18,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -24,9 +30,11 @@ import com.campusute.app.core.data.SessionRepository
 import com.campusute.app.core.designsystem.components.CampusTopBar
 import com.campusute.app.feature.auth.LoginScreen
 import com.campusute.app.feature.chat.ChatScreen
+import com.campusute.app.feature.notes.NotesScreen
+import com.campusute.app.feature.notes.NotesViewModel
 import com.campusute.app.feature.schedule.TimetableScreen
 
-/** Signed-in shell: top bar (logout) + bottom tabs (home / timetable / notifications / AI chat). */
+/** Signed-in shell: top bar (bell + logout) + bottom tabs (home / timetable / notifications / AI chat / notes). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CampusApp(
@@ -65,13 +73,28 @@ fun CampusApp(
 fun HomeShell(
     onLogout: () -> Unit,
     sessionRepository: SessionRepository,
+    homeViewModel: HomeViewModel = hiltViewModel(),
+    timetableViewModel: com.campusute.app.feature.schedule.ScheduleViewModel = hiltViewModel(),
+    notesViewModel: NotesViewModel = hiltViewModel(),
+    chatViewModel: com.campusute.app.feature.chat.ChatViewModel = hiltViewModel(),
 ) {
     var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
+    val unread by homeViewModel.unread.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             CampusTopBar(
                 title = stringResource(R.string.app_name),
                 actions = {
+                    // Bell + unread badge share the SAME HomeViewModel instance as
+                    // the home tab and the notification list (one "home" entry).
+                    IconButton(
+                        onClick = { tab = 2 },
+                        modifier = Modifier.semantics { contentDescription = "Chuông thông báo" },
+                    ) {
+                        BadgedBox(badge = {
+                            if (unread > 0) { Badge { Text(unread.toString()) } }
+                        }) { Text("🔔") }
+                    }
                     TextButton(onClick = {
                         sessionRepository.logout()
                         onLogout()
@@ -105,15 +128,22 @@ fun HomeShell(
                     icon = { Text("🤖") },
                     label = { Text("Trợ lý AI") },
                 )
+                NavigationBarItem(
+                    selected = tab == 4,
+                    onClick = { tab = 4 },
+                    icon = { Text("📝") },
+                    label = { Text("Ghi chú") },
+                )
             }
         },
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> HomeScreen()
-                1 -> TimetableScreen(hiltViewModel())
-                2 -> NotificationList(hiltViewModel())
-                else -> com.campusute.app.feature.chat.ChatScreen(hiltViewModel())
+                0 -> HomeScreen(homeViewModel)
+                1 -> TimetableScreen(timetableViewModel)
+                2 -> NotificationList(homeViewModel)
+                3 -> ChatScreen(chatViewModel)
+                else -> NotesScreen(notesViewModel)
             }
         }
     }

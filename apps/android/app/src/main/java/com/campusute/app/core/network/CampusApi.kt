@@ -1,8 +1,10 @@
 package com.campusute.app.core.network
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 
 interface CampusApi {
 
@@ -49,6 +51,18 @@ interface CampusApi {
 
     @POST("notes")
     suspend fun createNote(@Body body: NoteRequestDto): ApiEnvelopeDto<NoteDto>
+
+    @PUT("notes/{id}")
+    suspend fun updateNote(
+        @retrofit2.http.Path("id") id: String,
+        @Body body: NoteRequestDto,
+    ): ApiEnvelopeDto<NoteDto>
+
+    @DELETE("notes/{id}")
+    suspend fun deleteNote(@retrofit2.http.Path("id") id: String): ApiEnvelopeDto<Map<String, String>>
+
+    @POST("ai/summarize")
+    suspend fun aiSummarize(@Body body: SummarizeRequestDto): ApiEnvelopeDto<SummarizeResponseDto>
 
     @POST("notifications/{id}/read")
     suspend fun markNotificationRead(@retrofit2.http.Path("id") id: String): ApiEnvelopeDto<Map<String, String>>

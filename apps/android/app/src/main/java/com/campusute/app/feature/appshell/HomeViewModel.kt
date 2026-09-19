@@ -68,7 +68,13 @@ class HomeViewModel @Inject constructor(
 
     fun markRead(notification: NotificationItemDto) {
         viewModelScope.launch {
-            runCatching { api.markNotificationRead(notification.id) }
+            runCatching { api.markNotificationRead(notification.id) }.onSuccess {
+                // Badge must decrement immediately; inbox row flips to read in place.
+                _unread.value = (_unread.value - 1).coerceAtLeast(0)
+                _inbox.value = _inbox.value.map {
+                    if (it.id == notification.id) it.copy(read = true) else it
+                }
+            }
         }
     }
 

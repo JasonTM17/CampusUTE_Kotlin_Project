@@ -1,5 +1,6 @@
 package com.campusute.app.feature.appshell
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -25,7 +26,7 @@ fun NotificationList(viewModel: HomeViewModel = hiltViewModel()) {
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
     ) {
         inbox.forEach { n ->
-            CampusCard {
+            CampusCard(modifier = Modifier.clickable { viewModel.markRead(n) }) {
                 Text(
                     (if (n.read) "" else "● ") + n.title,
                     style = MaterialTheme.typography.titleSmall,
