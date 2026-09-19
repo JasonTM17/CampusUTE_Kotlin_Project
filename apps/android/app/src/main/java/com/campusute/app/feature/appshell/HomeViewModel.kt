@@ -67,6 +67,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun markRead(notification: NotificationItemDto) {
+        if (notification.read) return // already-read row: badge must not undercount
         viewModelScope.launch {
             runCatching { api.markNotificationRead(notification.id) }.onSuccess {
                 // Badge must decrement immediately; inbox row flips to read in place.
