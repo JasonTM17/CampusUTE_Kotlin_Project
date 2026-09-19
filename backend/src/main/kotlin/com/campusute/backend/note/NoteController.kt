@@ -29,8 +29,10 @@ class Note(
     @Column(name = "user_id", nullable = false) val userId: UUID,
     @Column(nullable = false) var title: String,
     @Column(nullable = false) var content: String = "",
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    var updatedAt: Instant = Instant.EPOCH,
+    // JPA-managed (no insertable/updatable override): the DB has no default,
+    // so entity-owned timestamps keep create/update rows from regressing to EPOCH.
+    @Column(name = "updated_at", nullable = false)
+    var updatedAt: Instant = Instant.now(),
 )
 
 interface NoteRepository : JpaRepository<Note, UUID> {
