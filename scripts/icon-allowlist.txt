@@ -1,0 +1,50 @@
+# Material Icons (core set) allowlist — any Icons.* reference in
+# apps/android/app/src/main must match one of these simple names.
+# material-icons-extended is NOT a dependency (release ships unminified), so an
+# icon outside this list must come in as a res/drawable vector instead.
+AutoMirrored.Filled.ArrowBack
+Filled.Add
+Filled.AddCircle
+Filled.ArrowBack
+Filled.ArrowDropDown
+Filled.ArrowForward
+Filled.Check
+Filled.CheckCircle
+Filled.Clear
+Filled.Close
+Filled.Create
+Filled.DateRange
+Filled.Delete
+Filled.Done
+Filled.Edit
+Filled.Email
+Filled.ExitToApp
+Filled.Face
+Filled.Favorite
+Filled.FavoriteBorder
+Filled.Home
+Filled.Info
+Filled.KeyboardArrowDown
+Filled.KeyboardArrowLeft
+Filled.KeyboardArrowRight
+Filled.KeyboardArrowUp
+Filled.List
+Filled.LocationOn
+Filled.Lock
+Filled.MailOutline
+Filled.Menu
+Filled.MoreVert
+Filled.Notifications
+Filled.Person
+Filled.Phone
+Filled.Place
+Filled.PlayArrow
+Filled.Refresh
+Filled.Search
+Filled.Send
+Filled.Settings
+Filled.Share
+Filled.ShoppingCart
+Filled.Star
+Filled.ThumbUp
+Filled.Warning

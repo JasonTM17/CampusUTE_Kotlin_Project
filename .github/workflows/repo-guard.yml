@@ -32,3 +32,6 @@ jobs:
             if [ ! -e "$link" ]; then echo "MISSING: $link"; missing=$((missing+1)); fi
           done
           [ "$missing" -eq 0 ] && echo "links: PASS" || exit 1
+
+      - name: Design guard (app-design §3 as CI)
+        run: bash scripts/design-guard.sh
