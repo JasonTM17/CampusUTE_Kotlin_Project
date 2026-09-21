@@ -71,6 +71,7 @@ Deep dives: [system-overview](docs/architecture/system-overview.md) ·
 [Android architecture](docs/architecture/android-architecture.md) ·
 [Backend architecture](docs/architecture/backend-architecture.md) ·
 [RAG](docs/ai/rag-architecture.md) · [Agents](docs/ai/agent-architecture.md) ·
+[Chat UI design contract](docs/ai/chat-design.md) ·
 [Threat model](docs/security/threat-model.md) ·
 [ADRs](docs/adr/) · [Database](docs/database/database-design.md)
 
