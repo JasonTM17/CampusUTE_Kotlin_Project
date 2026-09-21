@@ -2,14 +2,11 @@ package com.campusute.app.feature.chat
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
+import com.campusute.app.core.designsystem.theme.CampusTypography
 
 /**
  * Academic Indigo, scoped to the chat subtree only.
@@ -140,23 +137,10 @@ private val ChatDarkScheme = darkColorScheme(
 )
 
 /**
- * Chat line metrics. Be Vietnam Pro is not bundled in the APK and adding a font
- * dependency is out of scope, so the typeface stays the platform default while the
- * vertical metrics follow the design system: line height >= 1.5x so stacked Vietnamese
- * tone marks (Ệ Ở Ứ ọ) never clip.
+ * Chat reads the shared [CampusTypography] scale rather than carrying its own: the >= 1.5x line
+ * height is a Vietnamese-diacritic constraint, not a chat preference, and a nested MaterialTheme
+ * replaces rather than inherits, so the scale has to be passed explicitly here.
  */
-private val ChatTypography = Typography(
-    titleLarge = TextStyle(fontSize = 18.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold),
-    titleMedium = TextStyle(fontSize = 16.sp, lineHeight = 24.sp, fontWeight = FontWeight.SemiBold),
-    titleSmall = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.SemiBold),
-    bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 26.sp),
-    bodyMedium = TextStyle(fontSize = 15.sp, lineHeight = 24.sp),
-    bodySmall = TextStyle(fontSize = 13.sp, lineHeight = 20.sp),
-    labelLarge = TextStyle(fontSize = 14.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium),
-    labelMedium = TextStyle(fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.Medium),
-    labelSmall = TextStyle(fontSize = 11.sp, lineHeight = 15.sp, fontWeight = FontWeight.Medium),
-)
-
 @Composable
 fun ChatTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -164,7 +148,7 @@ fun ChatTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) ChatDarkScheme else ChatLightScheme,
-        typography = ChatTypography,
+        typography = CampusTypography,
         content = content,
     )
 }
