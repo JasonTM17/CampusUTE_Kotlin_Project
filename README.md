@@ -9,7 +9,7 @@
 Kotlin · Jetpack Compose · Spring Boot · FastAPI + OpenAI Agents SDK · RAG · pgvector · Offline-First
 
 [![CI](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/actions/workflows/repo-guard.yml/badge.svg)](./.github/workflows/repo-guard.yml)
-[![Release](https://img.shields.io/github/v/release/JasonTM17/CampusUTE_Kotlin_Project)](../../releases)
+[![Release](https://img.shields.io/github/v/release/JasonTM17/CampusUTE_Kotlin_Project)](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Docker-green)](#getting-started)
 
@@ -72,6 +72,7 @@ Deep dives: [system-overview](docs/architecture/system-overview.md) ·
 [Backend architecture](docs/architecture/backend-architecture.md) ·
 [RAG](docs/ai/rag-architecture.md) · [Agents](docs/ai/agent-architecture.md) ·
 [Chat UI design contract](docs/ai/chat-design.md) ·
+[App design contract + screen catalogue](docs/ai/app-design.md) ·
 [Threat model](docs/security/threat-model.md) ·
 [ADRs](docs/adr/) · [Database](docs/database/database-design.md)
 
