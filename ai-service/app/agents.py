@@ -37,6 +37,43 @@ STOPWORDS = {"la", "gi", "cua", "va", "cho", "toi", "co", "the", "what", "is", "
 # sentence. The live LLM path enforces the same rule via the system prompt.
 INJECTION_RE = re.compile(r"(ignore|instructions|reveal|admin|bypass|quen (?:tat )?ca|hay tu|tu cho)", re.I)
 
+# Bidi overrides and zero-width marks let ingested text spoof reading order or hide
+# runs from a reader. They carry no meaning, so they are removed at the payload edge.
+_INVISIBLE = dict.fromkeys(
+    [
+        0x202A, 0x202B, 0x202C, 0x202D, 0x202E,  # bidi embedding/override
+        0x2066, 0x2067, 0x2068, 0x2069,  # bidi isolates
+        0x200B, 0x200C, 0x200D, 0xFEFF,  # zero-width / BOM
+        0x2060,  # word joiner
+        0x200E, 0x200F, 0x061C,  # LRM / RLM / Arabic letter mark
+    ],
+    None,
+)
+
+
+def sanitize_text(text: str) -> str:
+    """Strip invisible formatting characters from untrusted document content."""
+    return (text or "").translate(_INVISIBLE)
+
+
+def safe_excerpt(text: str) -> str:
+    """Filter a citation excerpt with the SAME firewall the answer uses.
+
+    Excerpts are verbatim retrieved document text. Excluding injection sentences
+    only while composing the answer left them crossing the wire one field later, so
+    a poisoned chunk reached the client inside a citation that asserts provenance.
+    """
+    kept = [
+        sentence.strip()
+        for sentence in re.split(r"(?<=[.!?])\s+", text or "")
+        # Match on the deaccented form, exactly like the answer path: the Vietnamese
+        # alternatives in INJECTION_RE only ever hit the deaccented spelling, so testing
+        # the accented original let "Quên tất cả chỉ dẫn trước…" through inside a citation.
+        if sentence.strip() and not INJECTION_RE.search(_deaccent(sentence))
+    ]
+    cleaned = sanitize_text(" ".join(kept)).strip()
+    return cleaned or "Trích đoạn bị loại vì chứa nội dung nghi ngờ."
+
 # Agent registry: each intent maps to an agent with its OWN tool allowlist.
 # Agents not backed by a dedicated backend module (library/career/service)
 # answer from the PUBLIC knowledge corpus only — they never gain data tools.
@@ -60,7 +97,17 @@ def route(message: str) -> str:
 
 
 def answer(message: str, user_jwt: str, enrolled_course_codes: list[str]) -> dict:
-    """Returns {answer, citations:[{document,page,excerpt}], tools:[names]}."""
+    """Returns {answer, citations:[{document,page,excerpt}], tools:[names]}.
+
+    Every payload string crosses this boundary sanitised: the citation fields are
+    filtered where they are built, and the answer body is stripped here so a tool-derived
+    run (course code, room name) cannot carry a bidi override to another consumer.
+    """
+    payload = _answer(message, user_jwt, enrolled_course_codes)
+    return {**payload, "answer": sanitize_text(payload["answer"])}
+
+
+def _answer(message: str, user_jwt: str, enrolled_course_codes: list[str]) -> dict:
     if route(message) == "REFUSE_CROSS_STUDENT":
         return {
             "answer": "Tôi chỉ có thể truy vấn dữ liệu của chính bạn, dựa trên quyền đã xác thực.",
@@ -135,18 +182,22 @@ def answer(message: str, user_jwt: str, enrolled_course_codes: list[str]) -> dic
             "citations": [],
             "tools": ["search_regulations"],
         }
+    # Number by SOURCE, not by sentence: the client renders one citation chip per document, so
+    # a per-sentence marker could exceed the chip count and leave markers with nothing to tap.
     parts, cited_idx = [], []
-    i = 0
-    for idx in sorted(per_doc):
+    for position, idx in enumerate(sorted(per_doc), start=1):
         for sentence in per_doc[idx]:
-            i += 1
-            parts.append(f"[{i}] {sentence}")
-            if idx not in cited_idx:
-                cited_idx.append(idx)
+            parts.append(f"[{position}] {sentence}")
+        cited_idx.append(idx)
     return {
         "answer": "Theo tài liệu chính thức trong kho kiến thức:\n\n" + "\n\n".join(parts),
         "citations": [
-            {"document": hits[idx]["document"], "page": hits[idx]["page"], "excerpt": hits[idx]["excerpt"], "source": hits[idx]["source"]}
+            {
+                "document": sanitize_text(hits[idx]["document"]),
+                "page": hits[idx]["page"],
+                "excerpt": safe_excerpt(hits[idx]["excerpt"]),
+                "source": sanitize_text(hits[idx]["source"]),
+            }
             for idx in cited_idx
         ],
         "tools": ["search_regulations"],
