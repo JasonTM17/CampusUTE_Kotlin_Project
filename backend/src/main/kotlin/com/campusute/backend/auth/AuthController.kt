@@ -1,6 +1,6 @@
 package com.campusute.backend.auth
 
-import com.campusute.backend.config.LoginRateLimiter
+import com.campusute.backend.config.FixedWindowRateLimiter
 import com.campusute.backend.common.ApiEnvelope
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.tags.Tag
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/api/v1/auth")
 class AuthController(
     private val auth: AuthService,
-    private val rateLimiter: LoginRateLimiter,
+    private val rateLimiter: FixedWindowRateLimiter,
 ) {
     data class LoginRequest(
         @field:NotBlank @field:Email
@@ -40,7 +40,7 @@ class AuthController(
     @Operation(summary = "Login with demo credentials (dev) or university SSO adapter")
     @PostMapping("/login")
     fun login(@Valid @RequestBody body: LoginRequest, request: HttpServletRequest): ApiEnvelope<TokenResponse> {
-        rateLimiter.check(body.email.lowercase())
+        rateLimiter.checkLogin(body.email.lowercase())
         val result = auth.login(body.email, body.password, request.getHeader("User-Agent"))
         return ApiEnvelope.ok(result.toResponse())
     }

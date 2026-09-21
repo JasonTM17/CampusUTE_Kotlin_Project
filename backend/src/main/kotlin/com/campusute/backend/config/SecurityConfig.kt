@@ -45,30 +45,34 @@ class SecurityConfig(private val jwtAuthFilter: JwtAuthFilter) {
 }
 
 /**
- * Fixed-window login rate limiter backed by Redis. Fails OPEN with a warning
- * when Redis is unreachable: availability of authentication outweighs the
- * limiter, and Redis outages must not lock the whole campus out.
+ * Fixed-window rate limiter backed by Redis, scoped per surface (`login`, `ai-chat`, …)
+ * so one budget cannot exhaust another's. Fails OPEN with a warning when Redis is
+ * unreachable: availability of the guarded feature outweighs the limiter, and Redis
+ * outages must not lock the whole campus out.
  */
 @Component
-class LoginRateLimiter(
+class FixedWindowRateLimiter(
     private val redis: StringRedisTemplate?,
     private val props: AppProperties,
 ) {
-    private val log = LoggerFactory.getLogger(LoginRateLimiter::class.java)
+    private val log = LoggerFactory.getLogger(FixedWindowRateLimiter::class.java)
 
-    fun check(key: String) {
-        val limit = props.loginRateLimitPerMinute
+    fun check(scope: String, key: String, limitPerMinute: Long) {
         try {
-            val redisKey = "rl:login:$key:${Instant.now().epochSecond / 60}"
+            val redisKey = "rl:$scope:$key:${Instant.now().epochSecond / 60}"
             val count = redis?.opsForValue()?.increment(redisKey) ?: return
             if (count == 1L) redis.expire(redisKey, Duration.ofSeconds(70))
-            if (count > limit) {
+            if (count > limitPerMinute) {
                 throw ApiException(ErrorCode.RATE_LIMITED, "Quá nhiều lần thử, vui lòng thử lại sau một phút.")
             }
         } catch (ex: ApiException) {
             throw ex
         } catch (ex: Exception) {
-            log.warn("login_rate_limiter_unavailable: failing open ({})", ex.javaClass.simpleName)
+            log.warn("rate_limiter_unavailable: failing open for scope {} ({})", scope, ex.javaClass.simpleName)
         }
     }
+
+    fun checkLogin(key: String) = check("login", key, props.loginRateLimitPerMinute)
+
+    fun checkAiChat(key: String) = check("ai-chat", key, props.aiChatRateLimitPerMinute)
 }

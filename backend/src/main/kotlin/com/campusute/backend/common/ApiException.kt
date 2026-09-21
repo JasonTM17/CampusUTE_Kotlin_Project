@@ -13,6 +13,7 @@ enum class ErrorCode(val status: Int) {
     AUTH_FORBIDDEN(403),
     NOT_FOUND(404),
     RATE_LIMITED(429),
+    AI_UNAVAILABLE(503),
     SYSTEM_INTERNAL(500),
 }
 

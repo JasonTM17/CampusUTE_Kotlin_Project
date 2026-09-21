@@ -8,6 +8,7 @@ data class AppProperties(
     val jwt: JwtProperties = JwtProperties(),
     val refreshTtlDays: Long = 14,
     val loginRateLimitPerMinute: Long = 10,
+    val aiChatRateLimitPerMinute: Long = 12,
 ) {
     data class JwtProperties(
         val secret: String = "",
