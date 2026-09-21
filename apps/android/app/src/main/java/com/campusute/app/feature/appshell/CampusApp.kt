@@ -90,7 +90,9 @@ fun HomeShell(
     Scaffold(
         topBar = {
             CampusTopBar(
-                title = stringResource(R.string.app_name),
+                // The assistant tab owns a richer identity than the app name; reusing the
+                // shared bar keeps one header on screen instead of stacking a second one.
+                title = if (tab == 3) "Trợ lý Học đường" else stringResource(R.string.app_name),
                 actions = {
                     // Bell + unread badge share the SAME HomeViewModel instance as
                     // the home tab and the notification list (one "home" entry).

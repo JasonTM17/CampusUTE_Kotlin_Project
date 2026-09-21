@@ -15,7 +15,17 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
+import javax.inject.Qualifier
 import javax.inject.Singleton
+
+/**
+ * The AI gateway waits up to 60s for the model, so the shared 20s client can never
+ * deliver a slow answer — it surfaces as a false "offline". AI calls get their own
+ * client whose read budget exceeds the gateway's.
+ */
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class AiNetwork
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -49,17 +59,43 @@ object NetworkModule {
         }
         .build()
 
+    private val apiJson = Json { ignoreUnknownKeys = true }
+
     @Provides
     @Singleton
     fun retrofit(baseUrl: String, client: OkHttpClient): Retrofit = Retrofit.Builder()
         .baseUrl(baseUrl)
         .client(client)
         .addConverterFactory(
-            Json { ignoreUnknownKeys = true }.asConverterFactory("application/json".toMediaType()),
+            apiJson.asConverterFactory("application/json".toMediaType()),
         )
         .build()
 
     @Provides
     @Singleton
     fun campusApi(retrofit: Retrofit): CampusApi = retrofit.create(CampusApi::class.java)
+
+    @Provides
+    @Singleton
+    @AiNetwork
+    fun aiOkHttp(client: OkHttpClient): OkHttpClient = client.newBuilder()
+        .readTimeout(75, TimeUnit.SECONDS)
+        .callTimeout(80, TimeUnit.SECONDS)
+        .build()
+
+    @Provides
+    @Singleton
+    @AiNetwork
+    fun aiRetrofit(baseUrl: String, @AiNetwork client: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl(baseUrl)
+        .client(client)
+        .addConverterFactory(
+            apiJson.asConverterFactory("application/json".toMediaType()),
+        )
+        .build()
+
+    @Provides
+    @Singleton
+    @AiNetwork
+    fun aiCampusApi(@AiNetwork retrofit: Retrofit): CampusApi = retrofit.create(CampusApi::class.java)
 }
