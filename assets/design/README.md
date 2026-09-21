@@ -42,3 +42,9 @@ pixel-by-pixel**, not just confirmed to exist.
 3. Contrast in these frames was judged by eye. The repo has no accessibility measurement harness.
 4. These are pictures, not code. Each one is only done when the states it draws are covered by a
    Robolectric semantics assertion, per `docs/ai/app-design.md` §5.
+5. Resolution is reference-grade, not spec-grade. Every frame Stitch returns is capped at 512px on
+   its long edge — measured across all thirteen files here, the long edge is uniformly 512, so a
+   portrait phone frame arrives around 110-230px wide. They are good enough to read layout,
+   hierarchy, colour and copy decisions from, and not good enough to measure spacing in. Any
+   implementation must take spacing from `docs/ai/app-design.md` and the 8pt grid, not from a
+   ruler across these images.
