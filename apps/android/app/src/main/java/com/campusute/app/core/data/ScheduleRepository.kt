@@ -25,6 +25,9 @@ class ScheduleRepository @Inject constructor(
 ) {
     fun observeDay(date: String): Flow<List<ScheduleSessionEntity>> = dao.observeDay(date)
 
+    /** The whole week in one query, so the grid does not fan out into seven day observers. */
+    fun observeWeek(from: String, to: String): Flow<List<ScheduleSessionEntity>> = dao.observeRange(from, to)
+
     suspend fun sync(from: String, to: String): ScheduleSyncOutcome = try {
         val envelope = api.scheduleSessions(from, to)
         val sessions = envelope.data

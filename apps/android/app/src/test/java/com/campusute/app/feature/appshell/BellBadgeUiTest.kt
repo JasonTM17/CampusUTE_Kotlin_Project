@@ -175,7 +175,7 @@ class BellBadgeUiTest {
         composeRule.onNodeWithText("Bài tập cần chú ý").assertExists()
         composeRule.onNodeWithText("Lịch học").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("← Tuần trước").assertExists()
+        composeRule.onNodeWithText("Tuần trước").assertExists()
 
         // The new notes tab renders its empty state.
         composeRule.onNodeWithText("Ghi chú").performClick()

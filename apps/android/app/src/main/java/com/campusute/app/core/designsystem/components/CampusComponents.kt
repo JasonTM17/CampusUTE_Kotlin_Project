@@ -53,8 +53,8 @@ import androidx.compose.ui.unit.dp
  * tokens restyle in one place.
  *
  * Before this file existed, `SectionHeader`, the error row and the offline banner were each
- * hand-rolled two or three times per feature, and the timetable's banner carried a raw
- * `Color(0xFFF59E0B)` that duplicated the theme. One offline, one error and one empty shape is
+ * hand-rolled two or three times per feature, and the timetable's banner carried a raw amber hex
+ * that duplicated the theme. One offline, one error and one empty shape is
  * what makes "failed to load" and "nothing to show" visually distinct on every tab — the property
  * `docs/ai/app-design.md` §4 asks each screen to preserve.
  */

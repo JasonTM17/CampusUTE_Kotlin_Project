@@ -18,15 +18,18 @@ import javax.inject.Inject
 
 data class TimetableUiState(
     val weekStart: LocalDate = LocalDate.now().with(DayOfWeek.MONDAY),
+    val today: LocalDate = LocalDate.now(),
     val selectedDate: LocalDate = LocalDate.now(),
     val daySessions: List<ScheduleSessionEntity> = emptyList(),
+    val weekSessions: List<ScheduleSessionEntity> = emptyList(),
     val loading: Boolean = true,
     val syncing: Boolean = false,
     val offline: Boolean = false,
     val message: String? = null,
-    val hasConflict: Boolean = false,
-    val empty: Boolean = false,
-)
+) {
+    /** A week is "empty" only when all seven days are — one blank Tuesday is not an empty week. */
+    val weekIsEmpty: Boolean get() = !loading && weekSessions.isEmpty()
+}
 
 @HiltViewModel
 class ScheduleViewModel @Inject constructor(
@@ -38,23 +41,29 @@ class ScheduleViewModel @Inject constructor(
     private val iso = DateTimeFormatter.ISO_LOCAL_DATE
 
     init {
+        observeWeek(_uiState.value.weekStart)
         selectDay(LocalDate.now())
     }
 
     private var dayJob: kotlinx.coroutines.Job? = null
+    private var weekJob: kotlinx.coroutines.Job? = null
 
     fun selectDay(date: LocalDate) {
-        _uiState.update { it.copy(selectedDate = date, loading = true, empty = false) }
+        _uiState.update { it.copy(selectedDate = date, loading = true) }
         dayJob?.cancel()
         dayJob = viewModelScope.launch {
             scheduleRepository.observeDay(date.iso()).collect { sessions ->
-                _uiState.update { state ->
-                    state.copy(
-                        daySessions = sessions,
-                        loading = false,
-                        empty = sessions.isEmpty(),
-                    )
-                }
+                _uiState.update { state -> state.copy(daySessions = sessions, loading = false) }
+            }
+        }
+    }
+
+    /** Re-observes the whole visible week whenever the anchor moves. */
+    private fun observeWeek(weekStart: LocalDate) {
+        weekJob?.cancel()
+        weekJob = viewModelScope.launch {
+            scheduleRepository.observeWeek(weekStart.iso(), weekStart.plusDays(6).iso()).collect { sessions ->
+                _uiState.update { it.copy(weekSessions = sessions) }
             }
         }
     }
@@ -65,10 +74,10 @@ class ScheduleViewModel @Inject constructor(
         viewModelScope.launch {
             when (val outcome = scheduleRepository.sync(week.iso(), week.plusDays(6).iso())) {
                 is ScheduleSyncOutcome.Success -> _uiState.update {
-                    it.copy(syncing = false, hasConflict = outcome.conflict, offline = false)
+                    it.copy(syncing = false, offline = false)
                 }
                 ScheduleSyncOutcome.Offline -> _uiState.update {
-                    it.copy(syncing = false, offline = true, message = "Ngoại tuyến — đang hiển thị dữ liệu đã lưu")
+                    it.copy(syncing = false, offline = true)
                 }
                 is ScheduleSyncOutcome.Failure -> _uiState.update {
                     it.copy(syncing = false, message = outcome.message)
@@ -80,7 +89,9 @@ class ScheduleViewModel @Inject constructor(
     fun changeWeek(forward: Boolean) {
         val newStart = _uiState.value.weekStart.plusWeeks(if (forward) 1 else -1)
         _uiState.update { it.copy(weekStart = newStart) }
-        selectDay(newStart)
+        observeWeek(newStart)
+        // Landing on Monday keeps the strip selection inside the week that is now on screen.
+        selectDay(if (_uiState.value.selectedDate in newStart..newStart.plusDays(6)) _uiState.value.selectedDate else newStart)
         refresh()
     }
 

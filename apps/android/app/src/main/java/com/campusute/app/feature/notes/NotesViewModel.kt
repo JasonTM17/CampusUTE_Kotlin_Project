@@ -49,6 +49,23 @@ class NotesViewModel @Inject constructor(
     private val _summarizing = MutableStateFlow(false)
     val summarizing: StateFlow<Boolean> = _summarizing.asStateFlow()
 
+    /**
+     * An AI failure is not a save failure. Sharing [error] made "tóm tắt hỏng" render in the same
+     * slot as "không tải được danh sách", so the retry button reloaded the list instead of
+     * re-asking the assistant.
+     */
+    private val _summarizeError = MutableStateFlow<String?>(null)
+    val summarizeError: StateFlow<String?> = _summarizeError.asStateFlow()
+
+    /**
+     * Closing an editor that still holds unsaved text used to discard it silently. The flag is
+     * recomputed against the snapshot taken when the editor opened, not against a keystroke count,
+     * so typing and then deleting returns to "clean".
+     */
+    private var origin = NoteDraft()
+    private val _dirty = MutableStateFlow(false)
+    val dirty: StateFlow<Boolean> = _dirty.asStateFlow()
+
     init {
         load()
     }
@@ -58,8 +75,14 @@ class NotesViewModel @Inject constructor(
             _loading.value = true
             runCatching { api.notes() }
                 .onSuccess { envelope ->
-                    _notes.value = envelope.data ?: emptyList()
-                    _error.value = null
+                    when {
+                        envelope.error != null -> _error.value = envelope.error.message
+                        envelope.data == null -> _error.value = "Phản hồi không có dữ liệu."
+                        else -> {
+                            _notes.value = envelope.data
+                            _error.value = null
+                        }
+                    }
                 }
                 .onFailure { _error.value = "Không thể tải ghi chú — kiểm tra kết nối." }
             _loading.value = false
@@ -67,26 +90,41 @@ class NotesViewModel @Inject constructor(
     }
 
     fun openNew() {
+        origin = NoteDraft()
         _draft.value = NoteDraft()
         _proposal.value = null
+        _summarizeError.value = null
+        _dirty.value = false
     }
 
     fun openEdit(note: NoteDto) {
-        _draft.value = NoteDraft(id = note.id, title = note.title, content = note.content)
+        origin = NoteDraft(id = note.id, title = note.title, content = note.content)
+        _draft.value = origin
         _proposal.value = null
+        _summarizeError.value = null
+        _dirty.value = false
     }
 
     fun closeEditor() {
         _draft.value = null
         _proposal.value = null
+        _summarizeError.value = null
+        _dirty.value = false
     }
 
     fun onTitleChange(value: String) {
         _draft.value = _draft.value?.copy(title = value)
+        recomputeDirty()
     }
 
     fun onContentChange(value: String) {
         _draft.value = _draft.value?.copy(content = value)
+        recomputeDirty()
+    }
+
+    private fun recomputeDirty() {
+        val d = _draft.value
+        _dirty.value = d != null && (d.title != origin.title || d.content != origin.content)
     }
 
     fun save() {
@@ -102,13 +140,21 @@ class NotesViewModel @Inject constructor(
                 if (d.id == null) api.createNote(request) else api.updateNote(d.id, request)
             }
                 .onSuccess { envelope ->
-                    val saved = envelope.data ?: return@onSuccess
-                    _notes.value =
-                        if (d.id == null) listOf(saved) + _notes.value
-                        else _notes.value.map { if (it.id == saved.id) saved else it }
-                    _draft.value = null
-                    _proposal.value = null
-                    _error.value = null
+                    val saved = envelope.data
+                    when {
+                        envelope.error != null -> _error.value = envelope.error.message
+                        saved == null -> _error.value = "Không lưu được ghi chú — thử lại."
+                        else -> {
+                            _notes.value =
+                                if (d.id == null) listOf(saved) + _notes.value
+                                else _notes.value.map { if (it.id == saved.id) saved else it }
+                            _draft.value = null
+                            _proposal.value = null
+                            _summarizeError.value = null
+                            _dirty.value = false
+                            _error.value = null
+                        }
+                    }
                 }
                 .onFailure { _error.value = "Không lưu được ghi chú — thử lại." }
             _busy.value = false
@@ -131,9 +177,19 @@ class NotesViewModel @Inject constructor(
         if (d.content.isBlank() || _summarizing.value) return
         viewModelScope.launch {
             _summarizing.value = true
+            _summarizeError.value = null
             runCatching { api.aiSummarize(SummarizeRequestDto(d.title, d.content)) }
-                .onSuccess { envelope -> envelope.data?.let { _proposal.value = it } }
-                .onFailure { _error.value = "AI tóm tắt tạm không khả dụng." }
+                .onSuccess { envelope ->
+                    // A 200 carrying `error` is a refusal, not an empty summary: without this
+                    // branch the dialog would have opened with "(AI không tạo được tóm tắt)".
+                    val data = envelope.data
+                    when {
+                        envelope.error != null -> _summarizeError.value = envelope.error.message
+                        data == null -> _summarizeError.value = "AI trả về phản hồi không hợp lệ."
+                        else -> _proposal.value = data
+                    }
+                }
+                .onFailure { _summarizeError.value = "AI tóm tắt tạm không khả dụng." }
             _summarizing.value = false
         }
     }
@@ -144,6 +200,7 @@ class NotesViewModel @Inject constructor(
         val d = _draft.value ?: return
         _draft.value = d.copy(content = d.content + "\n\n[Tóm tắt AI]\n" + p.summary)
         _proposal.value = null
+        recomputeDirty()
     }
 
     fun dismissProposal() {
