@@ -21,6 +21,7 @@ import com.campusute.app.core.network.NoteRequestDto
 import com.campusute.app.core.network.NotificationItemDto
 import com.campusute.app.core.network.RefreshRequestDto
 import com.campusute.app.core.network.ScheduleSessionDto
+import com.campusute.app.core.network.StubCampusApi
 import com.campusute.app.core.network.SubmitAssignmentDto
 import com.campusute.app.core.network.SummarizeRequestDto
 import com.campusute.app.core.network.SummarizeResponseDto
@@ -88,7 +89,7 @@ class BellBadgeUiTest {
         override suspend fun count() = rows.value.size
     }
 
-    private class ShellApi : CampusApi {
+    private class ShellApi : StubCampusApi() {
         val reads = mutableListOf<String>()
         private val user = UserDto("1", "student@demo.campusute.vn", "Nguyễn Văn Sơn", "21110101", "CNTT", listOf("STUDENT"))
         private val notifications = (1..3).map { i ->
@@ -171,7 +172,7 @@ class BellBadgeUiTest {
         // Tabs 0..3 remain selectable after the VM hoist.
         composeRule.onNodeWithText("Trang chủ").performClick()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("Bài tập").assertExists()
+        composeRule.onNodeWithText("Bài tập cần chú ý").assertExists()
         composeRule.onNodeWithText("Lịch học").performClick()
         composeRule.waitForIdle()
         composeRule.onNodeWithText("← Tuần trước").assertExists()

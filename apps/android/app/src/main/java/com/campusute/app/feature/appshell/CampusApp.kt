@@ -86,7 +86,8 @@ fun HomeShell(
     chatViewModel: com.campusute.app.feature.chat.ChatViewModel = hiltViewModel(),
 ) {
     var tab by androidx.compose.runtime.saveable.rememberSaveable { mutableIntStateOf(0) }
-    val unread by homeViewModel.unread.collectAsStateWithLifecycle()
+    val homeState by homeViewModel.uiState.collectAsStateWithLifecycle()
+    val unread = homeState.unread
     Scaffold(
         topBar = {
             CampusTopBar(
@@ -152,7 +153,7 @@ fun HomeShell(
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> HomeScreen(homeViewModel)
+                0 -> HomeScreen(homeViewModel, onOpenInbox = { tab = 2 })
                 1 -> TimetableScreen(timetableViewModel)
                 2 -> NotificationList(homeViewModel)
                 3 -> ChatScreen(chatViewModel)

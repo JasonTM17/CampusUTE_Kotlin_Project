@@ -4,6 +4,7 @@ import com.campusute.app.core.data.SessionRepository
 import com.campusute.app.core.network.ApiEnvelopeDto
 import com.campusute.app.core.network.ApiErrorDto
 import com.campusute.app.core.network.CampusApi
+import com.campusute.app.core.network.StubCampusApi
 import com.campusute.app.core.network.LoginRequestDto
 import com.campusute.app.core.network.RefreshRequestDto
 import com.campusute.app.core.network.TokenResponseDto
@@ -45,7 +46,7 @@ class LoginViewModelTest {
         override fun clear() { access = null; refresh = null }
     }
 
-    private class FakeApi(var behaviour: Behaviour) : CampusApi {
+    private class FakeApi(var behaviour: Behaviour) : StubCampusApi() {
         enum class Behaviour { OK, REJECTED, OFFLINE }
         override suspend fun login(body: LoginRequestDto) = when (behaviour) {
             Behaviour.OK -> ApiEnvelopeDto(data = TokenResponseDto("a", "r", 15, user))

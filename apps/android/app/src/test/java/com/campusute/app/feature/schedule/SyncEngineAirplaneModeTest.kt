@@ -10,6 +10,7 @@ import com.campusute.app.core.database.SyncStateDao
 import com.campusute.app.core.database.SyncStateEntity
 import com.campusute.app.core.network.ApiEnvelopeDto
 import com.campusute.app.core.network.CampusApi
+import com.campusute.app.core.network.StubCampusApi
 import com.campusute.app.core.network.LoginRequestDto
 import com.campusute.app.core.network.OpResultDto
 import com.campusute.app.core.network.PushOperationDto
@@ -76,7 +77,7 @@ class SyncEngineAirplaneModeTest {
     }
 
     /** Api that is offline for the first [failFirst] sync attempts, then acks. */
-    private class FlakyApi(private val failFirst: Int) : CampusApi {
+    private class FlakyApi(private val failFirst: Int) : StubCampusApi() {
         var attempts = 0
         val receivedBatches = mutableListOf<List<PushOperationDto>>()
         val serverTasks = mutableListOf<TaskDto>()

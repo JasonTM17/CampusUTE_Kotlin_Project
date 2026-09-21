@@ -7,6 +7,7 @@ import com.campusute.app.core.database.ScheduleSessionEntity
 import com.campusute.app.core.network.ApiEnvelopeDto
 import com.campusute.app.core.network.ApiErrorDto
 import com.campusute.app.core.network.CampusApi
+import com.campusute.app.core.network.StubCampusApi
 import com.campusute.app.core.network.LoginRequestDto
 import com.campusute.app.core.network.RefreshRequestDto
 import com.campusute.app.core.network.ScheduleSessionDto
@@ -51,7 +52,7 @@ class ScheduleRepositoryTest {
         override suspend fun count() = rows.value.size
     }
 
-    private class FakeApi(var behaviour: Behaviour) : CampusApi {
+    private class FakeApi(var behaviour: Behaviour) : StubCampusApi() {
         enum class Behaviour { OK_CONFLICT, OK_CLEAN, OFFLINE, ERROR }
         private val session = ScheduleSessionDto(
             id = "s1", courseCode = "SE104", courseName = "Software Engineering",

@@ -14,6 +14,7 @@ import com.campusute.app.core.network.ApiEnvelopeDto
 import com.campusute.app.core.network.ApiErrorDto
 import com.campusute.app.core.network.AssignmentDto
 import com.campusute.app.core.network.CampusApi
+import com.campusute.app.core.network.StubCampusApi
 import com.campusute.app.core.network.InboxDto
 import com.campusute.app.core.network.LoginRequestDto
 import com.campusute.app.core.network.NetworkModule
@@ -91,7 +92,7 @@ class ChatScreenUiTest {
         override fun clear() { access = null; refresh = null }
     }
 
-    private open class StubApi : CampusApi {
+    private open class StubApi : StubCampusApi() {
         override suspend fun login(body: LoginRequestDto) = throw IOException("offline")
         override suspend fun refresh(body: RefreshRequestDto) = TODO()
         override suspend fun logout(body: RefreshRequestDto): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto()

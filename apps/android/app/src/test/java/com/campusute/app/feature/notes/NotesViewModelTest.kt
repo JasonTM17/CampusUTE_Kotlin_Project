@@ -5,6 +5,7 @@ import com.campusute.app.core.network.AiChatRequest
 import com.campusute.app.core.network.AiChatResponse
 import com.campusute.app.core.network.AssignmentDto
 import com.campusute.app.core.network.CampusApi
+import com.campusute.app.core.network.StubCampusApi
 import com.campusute.app.core.network.InboxDto
 import com.campusute.app.core.network.LoginRequestDto
 import com.campusute.app.core.network.NoteDto
@@ -46,7 +47,7 @@ class NotesViewModelTest {
     @Before fun setUp() { Dispatchers.setMain(dispatcher) }
     @After fun tearDown() { Dispatchers.resetMain() }
 
-    private class RecordingApi : CampusApi {
+    private class RecordingApi : StubCampusApi() {
         val writes = mutableListOf<String>()
         val notes = mutableListOf(NoteDto("n1", "Đã có", "nội dung cũ", "2026-09-19T00:00:00Z"))
         var summarizeResult = SummarizeResponseDto("Học JOIN • Học INDEX", true)

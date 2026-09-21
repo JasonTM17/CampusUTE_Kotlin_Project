@@ -9,6 +9,7 @@ import com.campusute.app.core.network.AiChatRequest
 import com.campusute.app.core.network.AiChatResponse
 import com.campusute.app.core.network.AssignmentDto
 import com.campusute.app.core.network.CampusApi
+import com.campusute.app.core.network.StubCampusApi
 import com.campusute.app.core.network.InboxDto
 import com.campusute.app.core.network.LoginRequestDto
 import com.campusute.app.core.network.NoteDto
@@ -54,7 +55,7 @@ class NotesScreenUiTest {
     @Before fun setUp() { Dispatchers.setMain(dispatcher) }
     @org.junit.After fun tearDown() { Dispatchers.resetMain() }
 
-    private class SummarizeApi : CampusApi {
+    private class SummarizeApi : StubCampusApi() {
         val notes = mutableListOf(NoteDto("n1", "Ghi chú DBMS", "Học JOIN. Học INDEX. Làm lab 2.", "2026-09-19T00:00:00Z"))
         var writes = 0
 
