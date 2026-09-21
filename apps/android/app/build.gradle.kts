@@ -60,6 +60,12 @@ kotlin {
     }
 }
 
+// Room schema export (fail-loud migrations): generated JSONs are committed under
+// schemas/ so any future version bump is a reviewable diff instead of a wipe.
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

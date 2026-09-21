@@ -17,7 +17,8 @@ object DatabaseModule {
     @Singleton
     fun database(@ApplicationContext context: Context): CampusDatabase =
         Room.databaseBuilder(context, CampusDatabase::class.java, "campusute.db")
-            .fallbackToDestructiveMigration()
+            // No destructive fallback: an unmigrated version bump must fail loud,
+            // never wipe study_tasks. Migrations are mandatory from here on.
             .build()
 
     @Provides

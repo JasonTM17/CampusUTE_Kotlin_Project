@@ -123,7 +123,7 @@ interface SyncStateDao {
         SyncStateEntity::class,
     ],
     version = 2,
-    exportSchema = false,
+    exportSchema = true,
 )
 abstract class CampusDatabase : RoomDatabase() {
     abstract fun scheduleSessionDao(): ScheduleSessionDao
