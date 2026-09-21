@@ -15,10 +15,12 @@ Contract and rules: [../../docs/ai/app-design.md](../../docs/ai/app-design.md) (
 | `citation-sheet.png` | citation bottom sheet with excerpt, page, source, disclaimer |
 | `stitch-states-matrix.png` | four-panel state matrix: first run, thinking, error+retry, citations |
 
-## App shell (Campus Blue, design source only — not yet implemented)
+## App shell (Campus Blue)
 
-Each row was generated against the ceilings in `docs/ai/app-design.md` §3 and then **inspected
-pixel-by-pixel**, not just confirmed to exist.
+Nine of these ten frames are now implemented in Compose; `study-tasks.png` is the one still on
+paper, and `docs/ai/app-design.md` §5 step 3 records why it was deliberately left out of the build
+waves. Each row was generated against the ceilings in `docs/ai/app-design.md` §3 and then
+**inspected pixel-by-pixel**, not just confirmed to exist.
 
 | File | screen | states carried | constraint check |
 | --- | --- | --- | --- |
@@ -35,8 +37,10 @@ pixel-by-pixel**, not just confirmed to exist.
 
 ## Known open questions raised by these screens
 
-1. `events-register` needs a host: the shell has five tabs and none of them is events. The frame
-   assumes it lives under Lịch học; that is a product decision, not a styling one.
+1. `events-register` needed a host: the shell has five tabs and none of them is events. The frame
+   assumed it lives under Lịch học. **Decided otherwise at build time** — it is a NavHost
+   destination entered from Trang chủ's "Học vụ" section, next to bảng điểm, because that is where
+   a student looks for academic records and it keeps the tab bar at five.
 2. Every frame renders Be Vietnam Pro / Inter. Neither is bundled and no font dependency is in
    scope, so the implemented screens will look slightly different until that decision changes.
 3. Contrast in these frames was judged by eye. The repo has no accessibility measurement harness.

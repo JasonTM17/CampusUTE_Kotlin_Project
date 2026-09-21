@@ -59,7 +59,7 @@ branded faces; that gap is known and accepted, not a surprise to rediscover at i
 | Icons: core set only | `material-icons-extended` is not a dependency and `isMinifyEnabled = false` (`app/build.gradle.kts:26`) | ~49 `Icons.Filled` names are available. No `Mic`, `AttachFile`, `Bookmark`, `Schedule`, `School`, `Article`, `SmartToy`, `FilterList`, `BarChart`, `Help`, `Visibility`, `QrCode`, `Logout`. **`Icons.Filled.Error` does not exist** — the shipped chat error row uses `Warning`. |
 | `minSdk = 26` (`app/build.gradle.kts:16`) | `Modifier.blur` compiles to `RenderEffect`, which is API 31+ | Frosted glass / blurred backdrops build green, look right on a modern emulator, and silently degrade on Android 8–11. Banned. |
 | No image loader, no charting library, no `androidx.graphics` shapes in the dependency graph | `apps/android/gradle/libs.versions.toml` | No photos, no data-viz frames, no custom `Shape` paths. |
-| Navigation is a `when (tab)` over five tabs; there is no per-screen route | `feature/appshell/CampusApp.kt` (`NavHost` declares only `login` and `home`) | Any multi-screen flow (list → detail with back stack, deep link, per-screen top bar) requires a shell change first, not a screen. |
+| Navigation is five tabs plus two sub-screen routes | `feature/appshell/CampusApp.kt` (`NavHost` declares `login`, `home`, `grades`, `events`) | The tab bar still cannot host a sixth destination; anything new is either a section of an existing tab or another `SubScreen` route with a back affordance |
 | Untrusted text stays plain and non-interactive | `feature/chat/ChatViewModel.kt` `sanitizeUntrusted`, `docs/ai/chat-design.md` | No markdown, no links, no tappable server-supplied URLs inside `answer`/`excerpt`. |
 | Data must already be reachable | `core/network/CampusApi.kt` (17 endpoints) vs `packages/api-contracts/openapi.json` (9 paths) | The **frozen contract is not the source of truth** — it omits grades, events, assignments, notifications, notes and tasks that the client really calls. Gate a screen against `CampusApi.kt` and the controllers, not the snapshot. |
 
@@ -73,18 +73,35 @@ Ranked by the gap between what ships and what the data already supports. Each ro
 screen to generate, then build. All ten have been generated and are versioned under
 [`assets/design/`](../../assets/design/README.md) with a per-screen constraint check.
 
-| # | slug | screen | job to be done | states the frame must carry | what the code lacks today |
+| # | slug | screen | job to be done | states the frame must carry | what the code lacked when the frame was drawn |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `home-resilient` | Trang chủ | "What needs my attention today?" | skeleton, per-section error + Thử lại, offline, empty-new-student, inbox preview | `HomeViewModel.kt:40,49,52` wrap every call in `runCatching { }.onSuccess { }` with no else branch, so a 500 renders as "Chưa có…" — failure is literally indistinguishable from empty |
+| 1 | `home-resilient` | Trang chủ | "What needs my attention today?" | skeleton, per-section error + Thử lại, offline, empty-new-student, inbox preview | `HomeViewModel` wrapped every call in `runCatching { }.onSuccess { }` with no else branch, so a 500 rendered as "Chưa có…" — failure was literally indistinguishable from empty |
 | 2 | `study-tasks` | Công việc học tập | Track study tasks that survive offline and merge | list, add-row, pending-sync badge, **sync-conflict resolution**, offline | `TasksViewModel` is complete and has no composable at all — a shipped feature with zero UI |
-| 3 | `grade-transcript` | Điểm & học phần | "Where do I stand per course?" | loading, empty, course rows with weighted components, letter grade, failing styling | no screen; `core/gpa/GpaCalculator.kt` is referenced only by its own test. **Show per-course totals and letters, not a cumulative GPA** — `grades/me` returns no credit counts, which `GpaCalculator` requires |
-| 4 | `assignment-submit` | Bài tập + sheet nộp | Know deadlines, submit before cutoff | overdue badge, sắp-hết hạn, submit sheet with 5000-char counter, server reject "Đã quá hạn", 403 not-enrolled, success | `AssignmentsSection.kt` is dead code (defined, never called); the live renderer is inlined in `HomeScreen.kt:40-56` and `Assignments.kt:124-127` rejections are swallowed |
-| 5 | `notifications-inbox` | Hộp thông báo | Triage GRADE vs ASSIGNMENT vs SYSTEM | unread separator, type filter chips, mark-read feedback, loading, error+retry, offline-stale, empty | `type` is delivered in `NotificationDto` and never rendered; deep links must **not** be designed — the DTO carries no source id, so tap = mark read only |
-| 6 | `schedule-week` | Lịch tuần | See the whole week, not one day | populated grid, conflict pair highlight, today marker, empty week, offline-saved badge | `TimetableScreen` renders one day; `TimetableUiState.empty` is set but never read; `:121` uses a raw `Color(0xFFF59E0B)` duplicating the theme |
-| 7 | `notes-editor` | Ghi chú | Capture and refine with AI as a proposal | editor, save-busy, summarize-failed, blank-summary fallback, delete-confirm, unsaved-draft warning | states exist logically with no layout; `NotesScreen.kt:100` renders `✨` — an emoji, against §3 |
-| 8 | `login-failures` | Đăng nhập | Recover from each distinct failure | invalid credentials, **rate-limit lockout**, offline, session-expired bounce | one raw red string at `LoginScreen.kt:90` for every cause |
-| 9 | `events-register` | Sự kiện | Find and claim seats | list with `seatsLeft`, registered pill, full event, idempotent double-tap, loading | no UI exists despite a live `EventController`. Detail sheets must not invent body copy — `EventDto` has no description |
-| 10 | `shell-tokens` | Component sheet | Make the shared vocabulary visible | `CampusCard` tonal + clickable variants, `SectionHeader`, `CampusErrorState`, shared `OfflineBanner`, filter-chip row, skeleton, `CampusEmptyState` **with an icon slot** | these are hand-rolled per feature today: `SectionHeader` 3×, error rendering 3×, offline banner 2×, and `CampusEmptyState` is icon-less by construction |
+| 3 | `grade-transcript` | Điểm & học phần | "Where do I stand per course?" | loading, empty, course rows with weighted components, letter grade, failing styling | no screen, and no `grades/me` on the client at all; `GpaCalculator` was referenced only by its own test. **Show per-course totals and letters, not a cumulative GPA** — `grades/me` returns no credit counts, which `GpaCalculator` requires |
+| 4 | `assignment-submit` | Bài tập + sheet nộp | Know deadlines, submit before cutoff | overdue badge, sắp-hết hạn, submit sheet with 5000-char counter, server reject "Đã quá hạn", 403 not-enrolled, success | `AssignmentsSection.kt` was dead code (defined, never called); the live renderer was inlined in `HomeScreen.kt` and rejections were swallowed to a boolean |
+| 5 | `notifications-inbox` | Hộp thông báo | Triage GRADE vs ASSIGNMENT vs SYSTEM | unread separator, type filter chips, mark-read feedback, loading, error+retry, offline-stale, empty | `type` was delivered in `NotificationDto` and never rendered; deep links must **not** be designed — the DTO carries no source id, so tap = mark read only |
+| 6 | `schedule-week` | Lịch tuần | See the whole week, not one day | populated grid, conflict pair highlight, today marker, empty week, offline-saved badge | `TimetableScreen` rendered one day; `TimetableUiState.empty` was set but never read; the offline banner used a raw amber hex duplicating the theme |
+| 7 | `notes-editor` | Ghi chú | Capture and refine with AI as a proposal | editor, save-busy, summarize-failed, blank-summary fallback, delete-confirm, unsaved-draft warning | a failed AI summary wrote into the same slot as a failed list load, so the only button reloaded notes instead of re-asking; closing an edited draft discarded it silently; `✨` was used as an icon |
+| 8 | `login-failures` | Đăng nhập | Recover from each distinct failure | invalid credentials, **rate-limit lockout**, offline, session-expired bounce | one raw red string for every cause, and a real 429 fell into `catch (HttpException)` → "Email hoặc mật khẩu không đúng." |
+| 9 | `events-register` | Sự kiện | Find and claim seats | list with `seatsLeft`, registered pill, full event, idempotent double-tap, loading | no UI and no client endpoint despite a live `EventController`. Detail sheets must not invent body copy — `EventDto` has no description |
+| 10 | `shell-tokens` | Component sheet | Make the shared vocabulary visible | `CampusCard` tonal + clickable variants, `SectionHeader`, `CampusErrorState`, shared `OfflineBanner`, filter-chip row, skeleton, `CampusEmptyState` **with an icon slot** | these were hand-rolled per feature: `SectionHeader` 3×, error rendering 3×, offline banner 2×, and `CampusEmptyState` was icon-less by construction |
+
+### Build status of this catalogue
+
+Nine of the ten are implemented and covered by Robolectric semantics assertions
+(`apps/android/app/src/test/.../HomeResilienceUiTest`, `GradesScreenUiTest`,
+`EventsScreenUiTest`, `NotesScreenUiTest`, `BellBadgeUiTest`, `LoginViewModelTest`).
+
+- **Built**: 10 `shell-tokens`, 1 `home-resilient`, 5 `notifications-inbox`, 4 `assignment-submit`,
+  6 `schedule-week`, 7 `notes-editor`, 8 `login-failures`, 3 `grade-transcript`, 9 `events-register`.
+- **Not built**: 2 `study-tasks` — deliberately, for the reason in §5 step 3.
+- Screens 3 and 9 needed client endpoints that did not exist (`grades/me`, `events`,
+  `events/{id}/register`), so those were added to `CampusApi` against the live controllers.
+- Screens 3 and 9 also needed a host. They are NavHost destinations with a real back stack,
+  entered from home's "Học vụ" section, which supersedes the §3 note that navigation is tabs only.
+- **No screen in this set has been inspected on a device.** The chat surface was, before this
+  catalogue was built; these nine are verified by compile, `assembleDebug` and Robolectric
+  assertions about which node appears in which state — not by looking at them.
 
 ### Explicitly not designing
 
@@ -93,29 +110,35 @@ flow) · file-upload submission (the backend stores a text note) · password res
 settings (no endpoints) · lecturer/admin surfaces (the shell is student-only) · profile/settings
 (`/me` returns five fields) · another chat frame (already shipped and device-verified).
 
-### Emoji debt found while auditing
+### Emoji debt found while auditing — cleared
 
-`✓` and `●` at `AssignmentsSection.kt:36` and `HomeScreen.kt:51`, and `✨` at `NotesScreen.kt:100`.
-These violate the no-emoji rule and must become Material Symbols (`Icons.Filled.Done`,
-`Icons.Filled.Info`, `Icons.Filled.Refresh`) as each screen is rebuilt.
+`✓` and `●` at `AssignmentsSection.kt:36` and `HomeScreen.kt:51`, and `✨` at `NotesScreen.kt:100`
+violated the no-emoji rule. All three sites are gone: `AssignmentsSection.kt` was deleted outright
+(its replacement is the submit sheet), status now renders as `CampusStatusBadge` text with a tone,
+and the notes action uses `Icons.Filled.Edit`. A `grep` for emoji codepoints across
+`apps/android/app/src/main` returns nothing; that grep is the gate §6 asks for.
 
 ## 5. Sequencing
 
 0. Token + type completion — **done** (§1, §2).
-1. Per-tab ViewModel state *before* designing that tab. A mockup cannot fix a ViewModel that
-   discards failures; exit criterion is a Robolectric test proving "API failed" ≠ "no data", using
-   the existing fake-`CampusApi` harness.
+1. Per-tab ViewModel state *before* designing that tab — **done for every tab built**. Exit
+   criterion met: `HomeResilienceUiTest`, `GradesScreenUiTest` and `EventsScreenUiTest` each prove
+   "API failed" ≠ "no data" against the fake-`CampusApi` harness, and each fails on the old shape.
 2. Generate and build two screens per wave, ordered 10 → 1 → 5 → 4 → 6 → 7 → 8 → 3 → 9 (the
-   component sheet first, because every other screen consumes it).
+   component sheet first, because every other screen consumes it) — **done**, in that order.
 3. Never batch with these: any Room version bump (`DatabaseModule.kt` uses
    `fallbackToDestructiveMigration()` with `exportSchema = false`, so a bump wipes `study_tasks`),
    surfacing `TasksViewModel` or `GpaCalculator` (each needs its own plan), and any contract
-   amendment.
+   amendment. `study-tasks` (catalogue #2) is therefore still unbuilt, and the grades screen uses
+   `GpaCalculator.letter`/`courseTotal` for per-course math only — it does not surface the
+   cumulative GPA those calls would need credits for.
 
 ## 6. Guardrail
 
 There is no lint, detekt, or screenshot test in any workflow, so nothing currently stands between
 "pretty mockup" and "committed UI". The cheapest enforcement that adds no dependency is a
 `repo-guard.yml` step failing on: `Color(0x` outside the three palette files, emoji codepoints in
-`apps/android/app/src/main`, and `Icons.*` names outside the core set. Until that exists, §3 is
-prose and prose has already been broken once (raw hex in `TimetableScreen.kt:121`).
+`apps/android/app/src/main`, and `Icons.*` names outside the core set. All three checks are run by
+hand at each wave boundary and are currently clean; the check itself is not yet in CI, so §3 is
+still prose — prose that was already broken once by raw hex in the timetable banner, which is now
+replaced by the shared `CampusOfflineBanner`.

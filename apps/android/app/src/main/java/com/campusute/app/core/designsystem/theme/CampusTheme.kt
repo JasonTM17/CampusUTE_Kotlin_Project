@@ -16,9 +16,13 @@ private val CampusAmber = Color(0xFFF59E0B)
 /**
  * Every M3 role is declared on purpose. `lightColorScheme` falls back to the Material baseline
  * for any role it is not given, and that baseline is purple — so leaving `primaryContainer` or
- * `surfaceContainer*` unset makes cards, sheets and chips render violet inside a blue app. Only
- * four roles were consumed before this file was completed, so filling the rest changes nothing
- * today; it is what makes the remaining tabs designable at all.
+ * `surfaceContainer*` unset makes cards, sheets and chips render violet inside a blue app.
+ *
+ * Only four roles were named at call sites before this file was completed, which invites the
+ * conclusion that filling the rest cannot change anything on screen. That is wrong: `Card` takes
+ * `surfaceContainer` and `NavigationBarItem` takes `secondaryContainer` without the call site
+ * naming either, so completing the scheme retinted the shell from accidental Material purple to
+ * the brand hues. Verified on device, and recorded in `docs/ai/app-design.md` §1.
  */
 private val LightColors = lightColorScheme(
     primary = CampusBlue,
