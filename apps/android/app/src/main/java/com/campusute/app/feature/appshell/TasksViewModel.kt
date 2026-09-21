@@ -2,6 +2,7 @@ package com.campusute.app.feature.appshell
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.campusute.app.core.data.TaskConflict
 import com.campusute.app.core.data.TasksRepository
 import com.campusute.app.core.database.StudyTaskEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -33,6 +34,8 @@ class TasksViewModel @Inject constructor(
     val tasks: StateFlow<List<StudyTaskEntity>> = tasksRepository.observeActive()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val conflicts: StateFlow<List<TaskConflict>> = tasksRepository.conflicts
+
     init {
         sync()
     }
@@ -54,6 +57,13 @@ class TasksViewModel @Inject constructor(
 
     fun delete(task: StudyTaskEntity) {
         viewModelScope.launch { tasksRepository.deleteTask(task) }
+    }
+
+    fun resolveConflict(conflict: TaskConflict, keepMine: Boolean) {
+        viewModelScope.launch {
+            tasksRepository.resolveConflict(conflict.op.clientOpId, keepMine)
+            sync()
+        }
     }
 
     fun sync() {

@@ -47,6 +47,7 @@ fun HomeScreen(
     onOpenInbox: (() -> Unit)? = null,
     onOpenGrades: (() -> Unit)? = null,
     onOpenEvents: (() -> Unit)? = null,
+    onOpenTasks: (() -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var submitTargetId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -139,6 +140,13 @@ fun HomeScreen(
                 item {
                     CampusCard(onClick = open) {
                         CampusLeadLine("Sự kiện", "Sự kiện đang mở đăng ký")
+                    }
+                }
+            }
+            onOpenTasks?.let { open ->
+                item {
+                    CampusCard(onClick = open) {
+                        CampusLeadLine("Công việc học tập", "Việc cần làm, đồng bộ offline-first")
                     }
                 }
             }

@@ -11,6 +11,10 @@ import com.campusute.app.core.network.PushOperationDto
 import com.campusute.app.core.network.SyncRequestDto
 import com.campusute.app.core.network.TaskDto
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import java.time.LocalDate
 import java.util.UUID
 import javax.inject.Inject
@@ -21,6 +25,15 @@ sealed interface SyncRunOutcome {
     data object Offline : SyncRunOutcome
     data class Failure(val message: String) : SyncRunOutcome
 }
+
+/**
+ * A push the server refused because someone else moved the row first. [op] is
+ * retained in pending_ops with the LOCAL payload written into it (UPDATE ops
+ * enqueue with null fields, so the values are copied from the task row BEFORE
+ * the server state overwrites it) — "keep mine" re-pushes the same clientOpId
+ * with the server's new baseVersion, "accept server" just drops the op.
+ */
+data class TaskConflict(val op: PendingOpEntity, val serverTask: TaskDto)
 
 /**
  * Generic offline-first sync engine (ADR-0002):
@@ -40,6 +53,22 @@ class TasksRepository @Inject constructor(
     fun observeActive(): Flow<List<StudyTaskEntity>> = taskDao.observeActive()
 
     suspend fun pendingCount(): Int = pendingDao.count()
+
+    private val _conflicts = MutableStateFlow<List<TaskConflict>>(emptyList())
+    val conflicts: StateFlow<List<TaskConflict>> = _conflicts.asStateFlow()
+
+    /** Both resolutions for one conflict row, per the study-tasks frame. */
+    suspend fun resolveConflict(clientOpId: String, keepMine: Boolean) {
+        val conflict = _conflicts.value.firstOrNull { it.op.clientOpId == clientOpId } ?: return
+        if (keepMine) {
+            // The server already moved to serverTask.version; re-push the local
+            // payload against that version so the next sync APPLIES cleanly.
+            pendingDao.enqueue(conflict.op.copy(baseVersion = conflict.serverTask.version))
+        } else {
+            pendingDao.deleteByIds(listOf(clientOpId))
+        }
+        _conflicts.update { list -> list.filterNot { it.op.clientOpId == clientOpId } }
+    }
 
     suspend fun createTask(title: String, dueDate: LocalDate?): String {
         val clientOpId = "c-" + UUID.randomUUID().toString()
@@ -149,14 +178,38 @@ class TasksRepository @Inject constructor(
             val results = response.data?.results ?: return SyncRunOutcome.Failure("Đồng bộ bị từ chối.")
             for ((op, result) in batch.zip(results)) {
                 when (result.status) {
-                    "APPLIED", "DUPLICATE", "CONFLICT" -> {
-                        conflicts += if (result.status == "CONFLICT") 1 else 0
+                    "APPLIED", "DUPLICATE" -> {
                         result.task?.let { applyServerState(it) }
                         pendingDao.deleteByIds(listOf(op.clientOpId))
                         // After CREATE, remap the local id to the server id.
                         if (result.status == "APPLIED" && op.opType == "CREATE" && result.task != null) {
                             taskDao.deleteById(op.taskId ?: "")
                         }
+                    }
+                    "CONFLICT" -> {
+                        val serverTask = result.task
+                        if (serverTask == null) {
+                            // Server owes us its state for a resolution card;
+                            // without it there is nothing to show, drop the op.
+                            pendingDao.deleteByIds(listOf(op.clientOpId))
+                        } else {
+                            // Copy the LOCAL payload into the retained op row
+                            // BEFORE applyServerState overwrites the task row —
+                            // UPDATE ops enqueue with null fields (W2 caveat).
+                            val local = op.taskId?.let { taskDao.byId(it) }
+                            val retained = op.copy(
+                                title = local?.title ?: op.title,
+                                dueDate = local?.dueDate ?: op.dueDate,
+                                done = local?.done ?: op.done,
+                            )
+                            pendingDao.enqueue(retained)
+                            applyServerState(serverTask)
+                            _conflicts.update { list ->
+                                list.filterNot { it.op.clientOpId == retained.clientOpId } +
+                                    TaskConflict(retained, serverTask)
+                            }
+                        }
+                        conflicts++
                     }
                     else -> pendingDao.deleteByIds(listOf(op.clientOpId)) // INVALID: drop poison op
                 }

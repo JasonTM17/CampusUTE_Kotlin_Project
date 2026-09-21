@@ -60,7 +60,9 @@ class SyncEngineAirplaneModeTest {
         val ops = MutableStateFlow<List<PendingOpEntity>>(emptyList())
         override suspend fun peek(limit: Int) = ops.value.sortedBy { it.createdAt }.take(limit)
         override suspend fun enqueue(op: PendingOpEntity) {
-            ops.value = ops.value + op
+            // Mirror the real @Insert(REPLACE)-by-clientOpId contract: the
+            // conflict path re-enqueues the SAME id to attach the local payload.
+            ops.value = ops.value.filterNot { it.clientOpId == op.clientOpId } + op
         }
         override suspend fun deleteByIds(ids: List<String>) {
             ops.value = ops.value.filterNot { it.clientOpId in ids }
@@ -173,8 +175,16 @@ class SyncEngineAirplaneModeTest {
 
         val outcome = repository.sync()
         assertTrue("got $outcome", outcome is SyncRunOutcome.Success && outcome.conflicts == 1)
-        assertEquals("conflicted op must be dropped", 0, pending.count())
-        assertEquals("server state must win", "Server title (mới hơn)", taskDao.byId("t-1")?.title)
+        // v1.1 conflict contract (R-A'): the op is RETAINED with the local
+        // payload for an explicit resolution, never silently dropped.
+        assertEquals("conflicted op must be retained for resolution", 1, pending.count())
+        assertEquals("server state must win in Room until resolved", "Server title (mới hơn)", taskDao.byId("t-1")?.title)
         assertEquals("server version must win", 3L, taskDao.byId("t-1")?.version)
+        assertEquals("conflict must surface for resolution", 1, repository.conflicts.value.size)
+
+        // Accepting the server version drops the retained op.
+        repository.resolveConflict(repository.conflicts.value.single().op.clientOpId, keepMine = false)
+        assertEquals("resolution must clear the queue", 0, pending.count())
+        assertEquals("resolution must clear the conflict", 0, repository.conflicts.value.size)
     }
 }

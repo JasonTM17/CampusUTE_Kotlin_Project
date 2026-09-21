@@ -88,6 +88,7 @@ fun CampusApp(
                 sessionRepository = sessionRepository,
                 onOpenGrades = { navController.navigate("grades") },
                 onOpenEvents = { navController.navigate("events") },
+                onOpenTasks = { navController.navigate("tasks") },
             )
         }
         composable("grades") {
@@ -98,6 +99,11 @@ fun CampusApp(
         composable("events") {
             SubScreen(title = "Sự kiện", onBack = { navController.popBackStack() }) {
                 EventsScreen()
+            }
+        }
+        composable("tasks") {
+            SubScreen(title = "Công việc học tập", onBack = { navController.popBackStack() }) {
+                TasksScreen()
             }
         }
     }
@@ -141,6 +147,7 @@ fun HomeShell(
     sessionRepository: SessionRepository,
     onOpenGrades: () -> Unit = {},
     onOpenEvents: () -> Unit = {},
+    onOpenTasks: () -> Unit = {},
     homeViewModel: HomeViewModel = hiltViewModel(),
     timetableViewModel: com.campusute.app.feature.schedule.ScheduleViewModel = hiltViewModel(),
     notesViewModel: NotesViewModel = hiltViewModel(),
@@ -214,7 +221,7 @@ fun HomeShell(
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> HomeScreen(homeViewModel, onOpenInbox = { tab = 2 }, onOpenGrades = onOpenGrades, onOpenEvents = onOpenEvents)
+                0 -> HomeScreen(homeViewModel, onOpenInbox = { tab = 2 }, onOpenGrades = onOpenGrades, onOpenEvents = onOpenEvents, onOpenTasks = onOpenTasks)
                 1 -> TimetableScreen(timetableViewModel)
                 2 -> NotificationList(homeViewModel)
                 3 -> ChatScreen(chatViewModel)
