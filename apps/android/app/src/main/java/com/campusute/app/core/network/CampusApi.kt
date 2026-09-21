@@ -69,4 +69,20 @@ interface CampusApi {
 
     @GET("notifications")
     suspend fun notifications(): ApiEnvelopeDto<InboxDto>
+
+    @GET("grades/me")
+    suspend fun gradesMe(): ApiEnvelopeDto<List<CourseGradesDto>>
+
+    @GET("events")
+    suspend fun events(): ApiEnvelopeDto<List<CampusEventDto>>
+
+    /**
+     * The backend deduplicates on (student, Idempotency-Key) and rejects a blank or over-long key,
+     * so the caller must mint one per intent — not per attempt — for a double tap to be safe.
+     */
+    @POST("events/{id}/register")
+    suspend fun registerEvent(
+        @retrofit2.http.Path("id") id: String,
+        @retrofit2.http.Header("Idempotency-Key") idempotencyKey: String,
+    ): ApiEnvelopeDto<Map<String, String>>
 }

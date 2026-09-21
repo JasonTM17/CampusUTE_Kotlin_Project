@@ -1,5 +1,7 @@
 package com.campusute.app.core.network
 
+import com.campusute.app.core.data.SessionEndedReason
+import com.campusute.app.core.data.SessionEvents
 import com.campusute.app.core.security.TokenStore
 import kotlinx.coroutines.runBlocking
 import okhttp3.Authenticator
@@ -38,6 +40,7 @@ class TokenAuthenticator @Inject constructor(
     private val tokenStore: TokenStore,
     private val baseUrl: String,
     private val lazyClient: dagger.Lazy<OkHttpClient>,
+    private val sessionEvents: SessionEvents,
 ) : Authenticator {
 
     // Concurrent 401s must not fire parallel refreshes with the same refresh
@@ -47,7 +50,10 @@ class TokenAuthenticator @Inject constructor(
     override fun authenticate(route: Route?, response: Response): Request? {
         if (responseCount(response) >= 2) return null
         synchronized(refreshLock) {
-            val currentRefresh = tokenStore.refreshToken() ?: return null
+            val currentRefresh = tokenStore.refreshToken() ?: run {
+                sessionEvents.report(SessionEndedReason.Missing)
+                return null
+            }
 
             val body = """{"refreshToken":"${currentRefresh.replace("\"", "\\\"")}"}"""
                 .toRequestBody("application/json; charset=utf-8".toMediaType())
@@ -63,6 +69,9 @@ class TokenAuthenticator @Inject constructor(
                 val tokens = if (resp.isSuccessful) parseRefresh(resp.body?.string()) else null
                 if (tokens == null) {
                     tokenStore.clear()
+                    // Clearing storage is not enough: MainActivity read the token once at launch,
+                    // so without this the shell stays on screen issuing requests it cannot author.
+                    sessionEvents.report(SessionEndedReason.Expired)
                     return null
                 }
                 tokenStore.saveTokens(tokens.first, tokens.second)

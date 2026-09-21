@@ -45,6 +45,8 @@ import com.campusute.app.core.network.NotificationItemDto
 fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
     onOpenInbox: (() -> Unit)? = null,
+    onOpenGrades: (() -> Unit)? = null,
+    onOpenEvents: (() -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var submitTargetId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -117,6 +119,27 @@ fun HomeScreen(
                 // A preview, not the inbox: the tab owns the full list and the filter chips.
                 items(state.inbox.take(3), key = { it.id }) { notification ->
                     NotificationPreviewRow(notification)
+                }
+            }
+        }
+
+        // Neither destination is a tab and the shell has five, so the sub-screens are entered from
+        // home. They sit last: this screen's job is "what needs my attention today", and a static
+        // link must not outrank live homework. It also keeps the first screenful free of chrome.
+        if (onOpenGrades != null || onOpenEvents != null) {
+            item { CampusSectionHeader("Học vụ") }
+            onOpenGrades?.let { open ->
+                item {
+                    CampusCard(onClick = open) {
+                        CampusLeadLine("Điểm & học phần", "Thành phần, điểm tổng kết và chữ cái từng môn")
+                    }
+                }
+            }
+            onOpenEvents?.let { open ->
+                item {
+                    CampusCard(onClick = open) {
+                        CampusLeadLine("Sự kiện", "Sự kiện đang mở đăng ký")
+                    }
                 }
             }
         }

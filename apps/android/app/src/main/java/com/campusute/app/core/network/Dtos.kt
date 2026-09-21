@@ -165,3 +165,29 @@ data class SummarizeRequestDto(val title: String, val content: String)
 
 @Serializable
 data class SummarizeResponseDto(val summary: String, val proposed: Boolean)
+
+// ---- grades + events ----
+// Both controllers have been live in the backend for a while; the client simply had no surface
+// for them, which is why the frozen openapi snapshot is not the gate for what is designable.
+
+@Serializable
+data class GradeComponentDto(val component: String, val score: Double, val weight: Double)
+
+@Serializable
+data class CourseGradesDto(
+    val courseId: String,
+    val courseCode: String,
+    val courseName: String,
+    val components: List<GradeComponentDto> = emptyList(),
+)
+
+@Serializable
+data class CampusEventDto(
+    val id: String,
+    val code: String,
+    val title: String,
+    val startsAt: String,
+    val location: String? = null,
+    val registered: Boolean = false,
+    val seatsLeft: Long = 0,
+)

@@ -3,6 +3,7 @@ package com.campusute.app.feature.appshell
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Home
@@ -19,8 +20,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -37,6 +40,8 @@ import com.campusute.app.core.data.SessionRepository
 import com.campusute.app.core.designsystem.components.CampusTopBar
 import com.campusute.app.feature.auth.LoginScreen
 import com.campusute.app.feature.chat.ChatScreen
+import com.campusute.app.feature.events.EventsScreen
+import com.campusute.app.feature.grades.GradesScreen
 import com.campusute.app.feature.notes.NotesScreen
 import com.campusute.app.feature.notes.NotesViewModel
 import com.campusute.app.feature.schedule.TimetableScreen
@@ -49,8 +54,18 @@ fun CampusApp(
     onSessionEnded: () -> Unit,
     onSessionStarted: () -> Unit,
     sessionRepository: SessionRepository,
+    bouncedReason: String? = null,
 ) {
     val navController = rememberNavController()
+    // startDestination is read once, so a session that dies mid-week needs an explicit hop back
+    // to the form — otherwise the shell stays mounted over a token store that just emptied.
+    var wasSignedIn by rememberSaveable { mutableStateOf(signedIn) }
+    LaunchedEffect(signedIn) {
+        if (wasSignedIn && !signedIn) {
+            navController.navigate("login") { popUpTo("home") { inclusive = true } }
+        }
+        wasSignedIn = signedIn
+    }
     NavHost(
         navController = navController,
         startDestination = if (signedIn) "home" else "login",
@@ -61,6 +76,7 @@ fun CampusApp(
                     onSessionStarted()
                     navController.navigate("home") { popUpTo("login") { inclusive = true } }
                 },
+                bouncedReason = bouncedReason,
             )
         }
         composable("home") {
@@ -70,8 +86,51 @@ fun CampusApp(
                     navController.navigate("login") { popUpTo("home") { inclusive = true } }
                 },
                 sessionRepository = sessionRepository,
+                onOpenGrades = { navController.navigate("grades") },
+                onOpenEvents = { navController.navigate("events") },
             )
         }
+        composable("grades") {
+            SubScreen(title = "Điểm & học phần", onBack = { navController.popBackStack() }) {
+                GradesScreen()
+            }
+        }
+        composable("events") {
+            SubScreen(title = "Sự kiện", onBack = { navController.popBackStack() }) {
+                EventsScreen()
+            }
+        }
+    }
+}
+
+/**
+ * A destination reached from a tab rather than from the bar. The shell's five tabs cannot host
+ * bảng điểm and sự kiện without a sixth icon, so these ride the same NavHost with their own title
+ * and a real up affordance — the back stack the design contract says a multi-screen flow needs.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SubScreen(
+    title: String,
+    onBack: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            CampusTopBar(
+                title = title,
+                navigationIcon = {
+                    IconButton(
+                        onClick = onBack,
+                        modifier = Modifier.semantics { contentDescription = "Quay lại" },
+                    ) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Box(Modifier.padding(padding)) { content() }
     }
 }
 
@@ -80,6 +139,8 @@ fun CampusApp(
 fun HomeShell(
     onLogout: () -> Unit,
     sessionRepository: SessionRepository,
+    onOpenGrades: () -> Unit = {},
+    onOpenEvents: () -> Unit = {},
     homeViewModel: HomeViewModel = hiltViewModel(),
     timetableViewModel: com.campusute.app.feature.schedule.ScheduleViewModel = hiltViewModel(),
     notesViewModel: NotesViewModel = hiltViewModel(),
@@ -153,7 +214,7 @@ fun HomeShell(
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> HomeScreen(homeViewModel, onOpenInbox = { tab = 2 })
+                0 -> HomeScreen(homeViewModel, onOpenInbox = { tab = 2 }, onOpenGrades = onOpenGrades, onOpenEvents = onOpenEvents)
                 1 -> TimetableScreen(timetableViewModel)
                 2 -> NotificationList(homeViewModel)
                 3 -> ChatScreen(chatViewModel)

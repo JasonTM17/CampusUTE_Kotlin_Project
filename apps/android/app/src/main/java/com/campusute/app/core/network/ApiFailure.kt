@@ -31,4 +31,12 @@ fun envelopeCode(raw: String): String? = runCatching {
         ?.jsonPrimitive?.contentOrNull
 }.getOrNull()
 
-fun HttpException.envelopeMessage(): String? = envelopeMessage(response()?.errorBody())
+/** The backend's own code and message for one refused call. The body is read exactly once. */
+data class EnvelopeError(val code: String?, val message: String?)
+
+fun HttpException.envelopeError(): EnvelopeError? {
+    val raw = runCatching { response()?.errorBody()?.string() }.getOrNull() ?: return null
+    return EnvelopeError(envelopeCode(raw), envelopeMessage(raw))
+}
+
+fun HttpException.envelopeMessage(): String? = envelopeError()?.message

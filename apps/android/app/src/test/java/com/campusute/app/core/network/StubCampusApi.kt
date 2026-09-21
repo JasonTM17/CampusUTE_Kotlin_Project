@@ -63,6 +63,15 @@ open class StubCampusApi : CampusApi {
 
     override suspend fun notifications(): ApiEnvelopeDto<InboxDto> =
         ApiEnvelopeDto(data = InboxDto(notifications = emptyList(), unread = 0))
+
+    override suspend fun gradesMe(): ApiEnvelopeDto<List<CourseGradesDto>> = ApiEnvelopeDto(data = emptyList())
+
+    override suspend fun events(): ApiEnvelopeDto<List<CampusEventDto>> = ApiEnvelopeDto(data = emptyList())
+
+    override suspend fun registerEvent(
+        id: String,
+        idempotencyKey: String,
+    ): ApiEnvelopeDto<Map<String, String>> = ApiEnvelopeDto(data = mapOf("status" to "REGISTERED"))
 }
 
 /**
