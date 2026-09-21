@@ -22,7 +22,7 @@ jobs:
       - name: AI security gates + eval on live stack (leak / citations / injection)
         working-directory: ai-service
         run: |
-          BACKEND_PORT=18080 docker compose -f ../docker-compose.yml up -d --build --wait postgres redis backend ai-service
+          AI_INGEST_TOKEN=dev-ingest-token BACKEND_PORT=18080 docker compose -f ../docker-compose.yml up -d --build --wait postgres redis backend ai-service
           pip install -r requirements.txt
           echo "waiting for backend + ai-service..."
           for i in $(seq 1 60); do

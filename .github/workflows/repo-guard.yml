@@ -22,7 +22,7 @@ jobs:
 
       - name: Compose file validation
         run: |
-          docker compose -f docker-compose.yml config -q
+          AI_INGEST_TOKEN=dev-ingest-token docker compose -f docker-compose.yml config -q
           echo "compose-config: PASS"
 
       - name: Markdown link sanity (repo-relative docs exist)

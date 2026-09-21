@@ -75,7 +75,7 @@ services:
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-32-bytes-minimum!!}
       APP_DEMO_MODE: ${APP_DEMO_MODE:-true}
-      AI_INGEST_TOKEN: ${AI_INGEST_TOKEN:-dev-ingest-token}
+      AI_INGEST_TOKEN: ${AI_INGEST_TOKEN:?AI_INGEST_TOKEN must be set - copy .env.example to .env}
     ports:
       - "${BACKEND_PORT:-8080}:8080"
     depends_on:
@@ -90,9 +90,11 @@ services:
     environment:
       AI_DATABASE_URL: postgresql://${POSTGRES_USER:-campusute}:${POSTGRES_PASSWORD:-campusute_dev}@postgres:5432/${POSTGRES_DB:-campusute}
       BACKEND_BASE_URL: http://backend:8080/api/v1
-      AI_INGEST_TOKEN: ${AI_INGEST_TOKEN:-dev-ingest-token}
+      AI_INGEST_TOKEN: ${AI_INGEST_TOKEN:?AI_INGEST_TOKEN must be set - copy .env.example to .env}
     ports:
-      - "${AI_PORT:-8600}:8600"
+      # Loopback only: the app reaches ai-service through the backend gateway, never
+      # directly. Publishing on all interfaces would expose the internal-token gate.
+      - "127.0.0.1:${AI_PORT:-8600}:8600"
     depends_on:
       postgres:
         condition: service_healthy
