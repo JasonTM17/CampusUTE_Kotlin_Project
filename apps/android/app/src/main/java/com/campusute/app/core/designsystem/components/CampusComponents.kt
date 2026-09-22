@@ -427,6 +427,7 @@ fun CampusHeroCard(
     fullName: String,
     profileLine: String,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     Row(
         modifier = modifier
@@ -440,6 +441,7 @@ fun CampusHeroCard(
                     ),
                 ),
             )
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),

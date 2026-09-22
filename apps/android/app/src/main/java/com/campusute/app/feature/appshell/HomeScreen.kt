@@ -60,6 +60,7 @@ fun HomeScreen(
     onOpenGrades: (() -> Unit)? = null,
     onOpenEvents: (() -> Unit)? = null,
     onOpenTasks: (() -> Unit)? = null,
+    onOpenProfile: (() -> Unit)? = null,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var submitTargetId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -88,7 +89,7 @@ fun HomeScreen(
         if (state.offline) {
             CampusOfflineBanner("Không có kết nối — nội dung bên dưới có thể chưa cập nhật")
         }
-        ProfileSection(state) { viewModel.retry(HomeSection.Profile) }
+        ProfileSection(state, onOpenProfile) { viewModel.retry(HomeSection.Profile) }
 
         // v1.2 quick stats (Stitch frame): at-a-glance counters; the two that map to a
         // destination are shortcuts, the assignment count is answered by the section below.
@@ -184,15 +185,17 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ProfileSection(state: HomeUiState, onRetry: () -> Unit) {
+private fun ProfileSection(state: HomeUiState, onOpenProfile: (() -> Unit)?, onRetry: () -> Unit) {
     when (state.profilePhase) {
         LoadPhase.Loading -> CampusSkeleton(rows = 1)
         LoadPhase.Failed -> CampusErrorState("Không tải được hồ sơ sinh viên.", onRetry = onRetry)
         LoadPhase.Ready -> {
             val user = state.user
+            // The hero doubles as the entry to Hồ sơ & Cài đặt (v1.3).
             CampusHeroCard(
                 fullName = user?.fullName ?: "sinh viên",
                 profileLine = user?.let { "${it.studentCode ?: "-"} · ${it.department ?: "-"}" } ?: "",
+                onClick = onOpenProfile,
             )
         }
     }

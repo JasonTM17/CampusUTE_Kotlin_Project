@@ -44,6 +44,7 @@ import com.campusute.app.feature.events.EventsScreen
 import com.campusute.app.feature.grades.GradesScreen
 import com.campusute.app.feature.notes.NotesScreen
 import com.campusute.app.feature.notes.NotesViewModel
+import com.campusute.app.feature.profile.ProfileScreen
 import com.campusute.app.feature.schedule.TimetableScreen
 
 /** Signed-in shell: top bar (bell + logout) + bottom tabs (home / timetable / notifications / AI chat / notes). */
@@ -89,6 +90,7 @@ fun CampusApp(
                 onOpenGrades = { navController.navigate("grades") },
                 onOpenEvents = { navController.navigate("events") },
                 onOpenTasks = { navController.navigate("tasks") },
+                onOpenProfile = { navController.navigate("profile") },
             )
         }
         composable("grades") {
@@ -104,6 +106,16 @@ fun CampusApp(
         composable("tasks") {
             SubScreen(title = "Công việc học tập", onBack = { navController.popBackStack() }) {
                 TasksScreen()
+            }
+        }
+        composable("profile") {
+            SubScreen(title = "Hồ sơ & Cài đặt", onBack = { navController.popBackStack() }) {
+                ProfileScreen(
+                    onLogout = {
+                        onSessionEnded()
+                        navController.navigate("login") { popUpTo("home") { inclusive = true } }
+                    },
+                )
             }
         }
     }
@@ -148,6 +160,7 @@ fun HomeShell(
     onOpenGrades: () -> Unit = {},
     onOpenEvents: () -> Unit = {},
     onOpenTasks: () -> Unit = {},
+    onOpenProfile: () -> Unit = {},
     homeViewModel: HomeViewModel = hiltViewModel(),
     timetableViewModel: com.campusute.app.feature.schedule.ScheduleViewModel = hiltViewModel(),
     notesViewModel: NotesViewModel = hiltViewModel(),
@@ -221,7 +234,7 @@ fun HomeShell(
     ) { padding ->
         Box(Modifier.padding(padding)) {
             when (tab) {
-                0 -> HomeScreen(homeViewModel, onOpenInbox = { tab = 2 }, onOpenGrades = onOpenGrades, onOpenEvents = onOpenEvents, onOpenTasks = onOpenTasks)
+                0 -> HomeScreen(homeViewModel, onOpenInbox = { tab = 2 }, onOpenGrades = onOpenGrades, onOpenEvents = onOpenEvents, onOpenTasks = onOpenTasks, onOpenProfile = onOpenProfile)
                 1 -> TimetableScreen(timetableViewModel)
                 2 -> NotificationList(homeViewModel)
                 3 -> ChatScreen(chatViewModel)

@@ -11,6 +11,7 @@ import androidx.lifecycle.lifecycleScope
 import com.campusute.app.core.designsystem.theme.CampusTheme
 import com.campusute.app.core.data.SessionEvents
 import com.campusute.app.core.data.SessionRepository
+import com.campusute.app.core.data.SettingsRepository
 import com.campusute.app.core.security.TokenStore
 import com.campusute.app.feature.appshell.CampusApp
 import dagger.hilt.android.AndroidEntryPoint
@@ -29,6 +30,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var sessionEvents: SessionEvents
 
+    @Inject
+    lateinit var settingsRepository: SettingsRepository
+
     private var signedIn by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -42,7 +46,9 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val ended by sessionEvents.ended.collectAsStateWithLifecycle()
-            CampusTheme {
+            // The settings switch owns the dark-mode decision (default light), applied live.
+            val darkMode by settingsRepository.darkMode.collectAsStateWithLifecycle()
+            CampusTheme(darkTheme = darkMode) {
                 CampusApp(
                     signedIn = signedIn,
                     onSessionEnded = {
