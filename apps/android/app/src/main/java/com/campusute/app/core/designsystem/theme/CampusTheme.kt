@@ -13,6 +13,11 @@ private val CampusBlue = Color(0xFF0B5FA5)
 private val CampusBlueDark = Color(0xFF9ECBFF)
 private val CampusAmber = Color(0xFFF59E0B)
 
+/** Home hero gradient (v1.2 Stitch frame): CampusBlue → brighter sky. Public so
+ *  feature screens can brush it without inlining hex literals (design-guard §3). */
+val CampusHeroGradientStart = CampusBlue
+val CampusHeroGradientEnd = Color(0xFF3B82C4)
+
 /**
  * Every M3 role is declared on purpose. `lightColorScheme` falls back to the Material baseline
  * for any role it is not given, and that baseline is purple — so leaving `primaryContainer` or

@@ -6,7 +6,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -118,15 +122,27 @@ fun CampusCard(
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) { content() }
     }
+    // v1.2 polish (Stitch frame): white surface + hairline border + 16dp corners
+    // instead of the flat tonal fill — depth without shadows.
+    val shape = RoundedCornerShape(16.dp)
+    val outlined = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    val hairline = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth()) { body() }
+        Card(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            shape = shape,
+            colors = outlined,
+            border = hairline,
+        ) { body() }
     } else if (tonal) {
         Card(
             modifier = modifier.fillMaxWidth(),
+            shape = shape,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         ) { body() }
     } else {
-        Card(modifier = modifier.fillMaxWidth()) { body() }
+        Card(modifier = modifier.fillMaxWidth(), shape = shape, colors = outlined, border = hairline) { body() }
     }
 }
 
@@ -399,4 +415,117 @@ fun CampusEmptyState(
 @Composable
 private fun SpacerHeight(height: Dp) {
     Spacer(Modifier.height(height))
+}
+
+/**
+ * v1.2 home hero (Stitch frame): blue gradient, white avatar with the student's
+ * initials, greeting line and a translucent profile chip. Colors come from the
+ * theme file (CampusHeroGradient*) — no literals here.
+ */
+@Composable
+fun CampusHeroCard(
+    fullName: String,
+    profileLine: String,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(
+                Brush.linearGradient(
+                    listOf(
+                        com.campusute.app.core.designsystem.theme.CampusHeroGradientStart,
+                        com.campusute.app.core.designsystem.theme.CampusHeroGradientEnd,
+                    ),
+                ),
+            )
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .background(Color.White, CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                initialsOf(fullName),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(
+                "Xin chào, $fullName",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color.White,
+            )
+            if (profileLine.isNotBlank()) {
+                Text(
+                    profileLine,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+private fun initialsOf(fullName: String): String {
+    val words = fullName.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (words.isEmpty()) return "?"
+    return (words.first().first().toString() + words.last().first().toString()).uppercase()
+}
+
+/** v1.2 quick-stat chip (Stitch frame): tonal rounded-16 tile, label + bold value + icon. */
+@Composable
+fun CampusStatChip(
+    label: String,
+    value: String,
+    icon: ImageVector,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f))
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                value,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** Circular tonal icon tile leading a list row (v1.2 Stitch frame). */
+@Composable
+fun CampusIconTile(icon: ImageVector, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(42.dp)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.08f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    }
 }
