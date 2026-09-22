@@ -88,20 +88,18 @@ screen to generate, then build. All ten have been generated and are versioned un
 
 ### Build status of this catalogue
 
-Nine of the ten are implemented and covered by Robolectric semantics assertions
-(`apps/android/app/src/test/.../HomeResilienceUiTest`, `GradesScreenUiTest`,
-`EventsScreenUiTest`, `NotesScreenUiTest`, `BellBadgeUiTest`, `LoginViewModelTest`).
+**Ten of ten built.** Nine shipped in the design waves; `study-tasks` (#2) landed
+in the v1.1 closeout with real conflict resolution (a CONFLICT push now retains
+the op with the local payload and surfaces "Giữ phiên bản của tôi" /
+"Nhận phiên bản máy chủ" instead of silently taking the server version).
 
-- **Built**: 10 `shell-tokens`, 1 `home-resilient`, 5 `notifications-inbox`, 4 `assignment-submit`,
-  6 `schedule-week`, 7 `notes-editor`, 8 `login-failures`, 3 `grade-transcript`, 9 `events-register`.
-- **Not built**: 2 `study-tasks` — deliberately, for the reason in §5 step 3.
-- Screens 3 and 9 needed client endpoints that did not exist (`grades/me`, `events`,
-  `events/{id}/register`), so those were added to `CampusApi` against the live controllers.
-- Screens 3 and 9 also needed a host. They are NavHost destinations with a real back stack,
-  entered from home's "Học vụ" section, which supersedes the §3 note that navigation is tabs only.
-- **No screen in this set has been inspected on a device.** The chat surface was, before this
-  catalogue was built; these nine are verified by compile, `assembleDebug` and Robolectric
-  assertions about which node appears in which state — not by looking at them.
+**Device-verified (v1.1 closeout):** every screen in this catalogue was
+inspected on the API-35 emulator against its tracked frame, with capture pairs
+archived alongside the execution ledger. `login-failures` is verified by its
+ViewModel test matrix (`LoginViewModelTest` — invalid credentials, rate-limit
+lockout, offline, session-expired bounce); the device attempt hit IME-input
+flakiness and is recorded as covered-by-tests rather than pretended.
+`shell-tokens` is verified in situ — every catalogue screen renders through it.
 
 ### Explicitly not designing
 
@@ -137,8 +135,9 @@ and the notes action uses `Icons.Filled.Edit`. A `grep` for emoji codepoints acr
 
 There is no lint, detekt, or screenshot test in any workflow, so nothing currently stands between
 "pretty mockup" and "committed UI". The cheapest enforcement that adds no dependency is a
-`repo-guard.yml` step failing on: `Color(0x` outside the three palette files, emoji codepoints in
-`apps/android/app/src/main`, and `Icons.*` names outside the core set. All three checks are run by
-hand at each wave boundary and are currently clean; the check itself is not yet in CI, so §3 is
-still prose — prose that was already broken once by raw hex in the timetable banner, which is now
-replaced by the shared `CampusOfflineBanner`.
+`repo-guard.yml` step failing on: `Color(0x` outside the palette files, emoji codepoints in
+`apps/android/app/src/main`, and `Icons.*` names outside the core set. **All three checks now run
+in CI** as `scripts/design-guard.sh` (repo-guard "Design guard" step), together with a
+Room fail-loud pin (`exportSchema = true`, committed schema, no destructive fallback). Erratum:
+the palette allow-list is **two** files (`CampusTheme.kt`, `ChatPalette.kt`) — `CampusTypography.kt`
+declares no color literals; the guard derives its list from grep, not from this prose.

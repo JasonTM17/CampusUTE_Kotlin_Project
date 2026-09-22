@@ -115,17 +115,21 @@ docker compose up -d                 # postgres+pgvector, redis, minio, backend,
 
 ## 📸 Demo
 
-Full demo flow (login → bell mark-read → notes CRUD with propose-only AI
-summarize → timetable → cited AI chat), recorded on the API-35 emulator
-against the live docker stack:
+v1.1 UI — all ten catalogue screens (see
+[assets/design](assets/design/README.md) for the Stitch frames each screen was
+built from) inspected on the API-35 emulator against the live docker stack:
 
-![CampusUTE demo flow](assets/demo/demo.gif)
+![CampusUTE demo flow — tasks](assets/demo/demo.gif)
 
-| Login | Timetable (offline-first) |
+| Home | Study tasks (offline-first, conflict resolution) |
 |---|---|
-| ![Login screen](assets/screenshots/login.png) | ![Timetable](assets/screenshots/timetable.png) |
-| **Notes with propose-only AI summarize** | **AI chat with mandatory citations** |
-| ![Notes AI summarize](assets/screenshots/notes-ai-summarize.png) | ![AI chat citations](assets/screenshots/ai-chat-citations.png) |
+| ![Home](assets/screenshots/home.png) | ![Study tasks](assets/screenshots/tasks.png) |
+| **Week timetable** | **Notifications with type filters** |
+| ![Timetable](assets/screenshots/timetable.png) | ![Notifications](assets/screenshots/notifications-filters.png) |
+| **Grades & coursework** | **Events registration** |
+| ![Grades](assets/screenshots/grades.png) | ![Events](assets/screenshots/events.png) |
+| **Notes** | **AI assistant (Academic Indigo) with citations** |
+| ![Notes](assets/screenshots/notes.png) | ![AI chat](assets/screenshots/ai-chat.png) |
 
 Dev-only demo accounts (synthetic seed data — see `backend` seeder):
 `student@demo.campusute.vn` / `Demo#Student1`,
@@ -144,6 +148,7 @@ Dev-only demo accounts (synthetic seed data — see `backend` seeder):
 | 6 | 8 agents + eval harness + notes AI | ✅ DONE |
 | 7 | Secondary modules + Kafka/ClickHouse analytics | 🗂 SCOPED OUT of v1.0 — roadmap tương lai |
 | 8 | Hardening, docs, demo GIF, release v1.0.0 | ✅ DONE |
+| 9 | UI catalogue closeout: study-tasks screen, Room fail-loud, design-guard CI, device walk, release v1.1.0 | ✅ DONE |
 
 ## 🔐 Security & privacy
 
