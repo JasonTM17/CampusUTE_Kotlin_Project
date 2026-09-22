@@ -19,7 +19,7 @@ fail=0
 
 echo "[design-guard] 1/4 color literals outside palettes"
 color_hits=$(grep -rn "Color(0x" apps/android/app/src/main/java \
-  | grep -v "CampusTheme.kt" | grep -v "ChatPalette.kt" || true)
+  | grep -v "designsystem/theme/CampusTheme.kt" | grep -v "chat/ChatPalette.kt" || true)
 if [ -n "$color_hits" ]; then echo "$color_hits"; fail=1; else echo "  ok: 0 hits"; fi
 
 echo "[design-guard] 2/4 emoji codepoints in main source"
