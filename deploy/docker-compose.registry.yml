@@ -1,0 +1,13 @@
+# Compose override that uses the published v1.1.0 images instead of local builds.
+# Override CAMPUSUTE_REGISTRY and CAMPUSUTE_TAG to select another release, or
+# set the service-specific image variables to pin exact registry digests.
+services:
+  backend:
+    image: ${CAMPUSUTE_BACKEND_IMAGE:-${CAMPUSUTE_REGISTRY:-docker.io/nguyenson1710}/campusute-backend:${CAMPUSUTE_TAG:-v1.1.0}}
+    build: !reset null
+    pull_policy: always
+
+  ai-service:
+    image: ${CAMPUSUTE_AI_IMAGE:-${CAMPUSUTE_REGISTRY:-docker.io/nguyenson1710}/campusute-ai:${CAMPUSUTE_TAG:-v1.1.0}}
+    build: !reset null
+    pull_policy: always

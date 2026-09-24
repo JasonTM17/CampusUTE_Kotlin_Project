@@ -13,13 +13,16 @@ Kotlin · Jetpack Compose · Spring Boot · FastAPI + OpenAI Agents SDK · RAG �
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Docker-green)](#getting-started)
 
+[Latest release](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/latest) ·
+[GitHub Packages](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs) ·
+[Docker Hub images](docs/deployment/container-images.md)
+
 </div>
 
-> ✅ **Status: v1.0.0 shipped.** Platform phases 0–8 of the roadmap below are
-> DONE and verified end-to-end on an emulator against a live docker stack
-> (demo GIF + screenshots below). Scoped out of v1.0 honestly and kept on the
-> roadmap: secondary modules (map/library/career/analytics), Kafka/ClickHouse
-> event analytics, SSE chat streaming, offline notes sync.
+> ✅ **Current release: [v1.1.0](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0).**
+> The Android demo, screenshots, and released backend/AI container images are
+> linked below. The v1.1.0 Docker images are available from Docker Hub and
+> GitHub Container Registry for `linux/amd64`.
 
 ## ✨ What is CampusUTE?
 
@@ -84,7 +87,7 @@ CampusUTE_Kotlin_Project/
 ├── backend/               # Kotlin Spring Boot modular monolith (/api/v1)
 ├── ai-service/            # Python FastAPI + OpenAI Agents SDK (RAG, tools)
 ├── packages/api-contracts/  # Frozen OpenAPI snapshot shared by 3 codebases
-├── deploy/                # reserved for deployment overlays (compose file at repo root)
+├── deploy/                # published-image Compose overlay (base compose at repo root)
 ├── database/              # migrations are in backend (Flyway); seeds & diagrams
 ├── docs/                  # architecture, ai, security, adr, demo
 ├── assets/                # demo GIF, diagrams, screenshots (regenerable)
@@ -104,7 +107,7 @@ cp .env.example .env                 # fill in only what you need; never commit 
 docker compose up -d                 # postgres+pgvector, redis, minio, backend, ai
 ```
 
-- Backend API: http://localhost:18080/swagger-ui (OpenAPI: `/v3/api-docs`)
+- Backend API: http://localhost:8080/swagger-ui (OpenAPI: `/v3/api-docs`)
 - AI service health: http://localhost:8600/health
 - Android: open `apps/android` in Android Studio → run `app` (demo accounts
   below; dev-only, synthetic data, disabled in release builds).
@@ -112,6 +115,21 @@ docker compose up -d                 # postgres+pgvector, redis, minio, backend,
 > AI works out of the box in **mock/replay mode** (no API key needed). Set
 > `OPENAI_API_KEY` in `.env` to enable live models — the key never enters the
 > APK.
+
+## 📦 Published container images
+
+Pull the released backend and AI service from either registry. The GitHub
+Packages are already connected to this repository; the deployment guide lists
+the exact release digests and shows how to start the full Compose stack using
+the published images instead of local builds.
+
+| Service | Docker Hub | GitHub Packages (GHCR) |
+|---|---|---|
+| Backend | [campusute-backend](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [campusute-backend](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) |
+| AI service | [campusute-ai](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [campusute-ai](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) |
+
+See [Container images and deployment](docs/deployment/container-images.md) for
+version-pinned pull commands, Compose setup, package links, and image metadata.
 
 ## 📸 Demo
 

@@ -4,12 +4,19 @@ name: release
 # - `workflow_dispatch` = pre-tag verification run on main: proves the ghcr
 #   packages:write path and both Dockerfiles build WHILE the tag is still
 #   avoidable (first-run failures must not force a re-tag).
-# - tag push `v*` = the real release: push ghcr images + attach the APK.
+# - tag push `v*` = publish versioned images, attach the APK, and promote the
+#   stable image aliases only after the GitHub release succeeds.
 
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+
+concurrency:
+  # All stable versions update the shared `latest` alias. Serialize the full
+  # workflow and keep a FIFO queue so concurrent tag pushes cannot move it back.
+  group: release-${{ github.workflow }}
+  queue: max
 
 permissions:
   contents: write
@@ -46,44 +53,352 @@ jobs:
           echo "verify: packages:write OK + both images build"
 
   images:
-    name: Push ghcr images (tag only)
+    name: Build and publish container images (tag only)
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    outputs:
+      backend_digest: ${{ steps.backend-image.outputs.digest }}
+      ai_digest: ${{ steps.ai-image.outputs.digest }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check optional Docker Hub credentials
+        id: dockerhub-credentials
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [[ -n "$DOCKERHUB_USERNAME" && -n "$DOCKERHUB_TOKEN" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          elif [[ -z "$DOCKERHUB_USERNAME" && -z "$DOCKERHUB_TOKEN" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Docker Hub publishing is disabled; configure both repository secrets to enable it."
+          else
+            echo "Configure both DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, or leave both unset." >&2
+            exit 1
+          fi
+
       - uses: docker/login-action@v3
+        name: Login to GitHub Container Registry
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push backend image
-        run: |
-          # ghcr requires lowercase repository names; repository_owner may be mixed-case.
-          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          TAG="${{ github.ref_name }}"
-          docker build \
-            -t "ghcr.io/$OWNER/campusute-backend:$TAG" \
-            -t "ghcr.io/$OWNER/campusute-backend:latest" \
-            ./backend
-          docker push "ghcr.io/$OWNER/campusute-backend:$TAG"
-          docker push "ghcr.io/$OWNER/campusute-backend:latest"
+      - name: Login to Docker Hub
+        if: steps.dockerhub-credentials.outputs.enabled == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push ai-service image
+      - name: Set image tags
+        id: image-tags
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          DOCKERHUB_ENABLED: ${{ steps.dockerhub-credentials.outputs.enabled }}
+        shell: bash
         run: |
-          OWNER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
-          TAG="${{ github.ref_name }}"
-          docker build \
-            -t "ghcr.io/$OWNER/campusute-ai:$TAG" \
-            -t "ghcr.io/$OWNER/campusute-ai:latest" \
-            ./ai-service
-          docker push "ghcr.io/$OWNER/campusute-ai:$TAG"
-          docker push "ghcr.io/$OWNER/campusute-ai:latest"
+          owner_lc="$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          hub_namespace="nguyenson1710"
+          {
+            echo "backend_tags<<EOF"
+            echo "ghcr.io/$owner_lc/campusute-backend:$RELEASE_TAG"
+            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+              echo "docker.io/$hub_namespace/campusute-backend:$RELEASE_TAG"
+            fi
+            echo "EOF"
+            echo "ai_tags<<EOF"
+            echo "ghcr.io/$owner_lc/campusute-ai:$RELEASE_TAG"
+            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+              echo "docker.io/$hub_namespace/campusute-ai:$RELEASE_TAG"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Validate release version and reject existing registry tags
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          DOCKERHUB_ENABLED: ${{ steps.dockerhub-credentials.outputs.enabled }}
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_API_URL: ${{ github.api_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        shell: bash
+        run: |
+          python3 - "$RELEASE_TAG" <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          from functools import cmp_to_key
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          release_tag = sys.argv[1]
+          numeric = r"(?:0|[1-9][0-9]*)"
+          identifier = rf"(?:{numeric}|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
+          version_pattern = re.compile(
+              rf"v({numeric})\.({numeric})\.({numeric})(?:-({identifier}(?:\.{identifier})*))?"
+          )
+          docker_tag_pattern = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}")
+
+          def parse(tag):
+              match = version_pattern.fullmatch(tag)
+              if not match or not docker_tag_pattern.fullmatch(tag):
+                  raise ValueError(tag)
+              major, minor, patch, prerelease = match.groups()
+              identifiers = prerelease.split(".") if prerelease else None
+              return int(major), int(minor), int(patch), identifiers
+
+          def compare(left, right):
+              left_core, right_core = left[:3], right[:3]
+              if left_core != right_core:
+                  return (left_core > right_core) - (left_core < right_core)
+              left_pre, right_pre = left[3], right[3]
+              if left_pre is None or right_pre is None:
+                  if left_pre is right_pre:
+                      return 0
+                  return 1 if left_pre is None else -1
+              for left_id, right_id in zip(left_pre, right_pre):
+                  if left_id == right_id:
+                      continue
+                  left_numeric, right_numeric = left_id.isdigit(), right_id.isdigit()
+                  if left_numeric and right_numeric:
+                      return (int(left_id) > int(right_id)) - (int(left_id) < int(right_id))
+                  if left_numeric != right_numeric:
+                      return -1 if left_numeric else 1
+                  return (left_id > right_id) - (left_id < right_id)
+              return (len(left_pre) > len(right_pre)) - (len(left_pre) < len(right_pre))
+
+          try:
+              incoming = parse(release_tag)
+          except ValueError as error:
+              print(f"::error::Release tags must be Docker-compatible SemVer: {error}")
+              sys.exit(1)
+
+          api_url = os.environ["GITHUB_API_URL"].rstrip("/")
+          repository = os.environ["GITHUB_REPOSITORY"]
+          api_token = os.environ["GITHUB_API_TOKEN"]
+          historical_releases = []
+          page = 1
+          while True:
+              query = urlencode({"per_page": 100, "page": page})
+              url = f"{api_url}/repos/{repository}/releases?{query}"
+              request = Request(
+                  url,
+                  headers={
+                      "Accept": "application/vnd.github+json",
+                      "Authorization": f"Bearer {api_token}",
+                      "User-Agent": "CampusUTE-release-workflow",
+                  },
+              )
+              try:
+                  with urlopen(request, timeout=30) as response:
+                      page_releases = json.load(response)
+              except Exception as error:
+                  print(
+                      f"::error::Cannot read GitHub release history page {page} ({type(error).__name__}); refusing to publish.",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+              if not isinstance(page_releases, list) or any(
+                  not isinstance(item, dict) or not isinstance(item.get("tag_name"), str)
+                  or type(item.get("draft")) is not bool
+                  or type(item.get("prerelease")) is not bool
+                  for item in page_releases
+              ):
+                  print(
+                      "::error::GitHub returned an invalid release-history page; refusing to publish.",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+              if any(item["tag_name"] == release_tag for item in page_releases):
+                  print(
+                      f"::error::Release tag {release_tag} is already associated with a GitHub release, including drafts; refusing to publish.",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+              historical_releases.extend(item for item in page_releases if not item["draft"])
+              if len(page_releases) < 100:
+                  break
+              page += 1
+
+          stable_versions = []
+          prerelease_versions_by_core = {}
+          for historical_release in historical_releases:
+              tag = historical_release["tag_name"]
+              try:
+                  version = parse(tag)
+              except ValueError:
+                  continue
+              if version[3] is None:
+                  stable_versions.append(version)
+              else:
+                  prerelease_versions_by_core.setdefault(version[:3], []).append(version)
+
+          highest_stable = None
+          if stable_versions:
+              highest_stable = max(stable_versions, key=cmp_to_key(compare))
+              if compare(incoming, highest_stable) <= 0:
+                  print(
+                      f"::error::Release {release_tag} must be newer than the highest published stable version.",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+          if incoming[3] is not None:
+              if highest_stable is not None and compare(incoming, highest_stable) <= 0:
+                  print(
+                      f"::error::Prerelease {release_tag} must be newer than the highest published stable version.",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+              same_core_prereleases = prerelease_versions_by_core.get(incoming[:3], [])
+              if same_core_prereleases:
+                  highest_prerelease = max(same_core_prereleases, key=cmp_to_key(compare))
+                  if compare(incoming, highest_prerelease) <= 0:
+                      print(
+                          f"::error::Prerelease {release_tag} must be newer than published prereleases for the same version.",
+                          file=sys.stderr,
+                      )
+                      sys.exit(1)
+          print(f"Release tag {release_tag} passed the published-version high-water check.")
+          PY
+
+          owner_lc="$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          hub_namespace="nguyenson1710"
+          accept_header='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+
+          require_tag_absent() {
+            local registry="$1"
+            local repository="$2"
+            local token_url="$3"
+            local username="$4"
+            local password="$5"
+            local token
+            local status
+
+            if ! token="$(curl --fail --silent --show-error --user "$username:$password" "$token_url" | jq -er '.token // .access_token')"; then
+              echo "::error::Cannot obtain a read token for $registry/$repository; refusing to publish." >&2
+              return 1
+            fi
+
+            if ! status="$(curl --silent --show-error --output /dev/null --write-out '%{http_code}' --head \
+              --header "Authorization: Bearer $token" \
+              --header "Accept: $accept_header" \
+              "https://$registry/v2/$repository/manifests/$RELEASE_TAG")"; then
+              echo "::error::Cannot query $registry/$repository:$RELEASE_TAG; refusing to publish." >&2
+              return 1
+            fi
+
+            case "$status" in
+              404) echo "$registry/$repository:$RELEASE_TAG is unused." ;;
+              200)
+                echo "::error::$registry/$repository:$RELEASE_TAG already exists; release version tags cannot be overwritten." >&2
+                return 1
+                ;;
+              *)
+                echo "::error::Registry returned HTTP $status for $registry/$repository:$RELEASE_TAG; refusing to publish." >&2
+                return 1
+                ;;
+            esac
+          }
+
+          require_tag_absent ghcr.io "$owner_lc/campusute-backend" \
+            "https://ghcr.io/token?service=ghcr.io&scope=repository:$owner_lc/campusute-backend:pull" \
+            "$GHCR_USERNAME" "$GHCR_TOKEN"
+          require_tag_absent ghcr.io "$owner_lc/campusute-ai" \
+            "https://ghcr.io/token?service=ghcr.io&scope=repository:$owner_lc/campusute-ai:pull" \
+            "$GHCR_USERNAME" "$GHCR_TOKEN"
+
+          if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+            require_tag_absent registry-1.docker.io "$hub_namespace/campusute-backend" \
+              "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$hub_namespace/campusute-backend:pull" \
+              "$DOCKERHUB_USERNAME" "$DOCKERHUB_TOKEN"
+            require_tag_absent registry-1.docker.io "$hub_namespace/campusute-ai" \
+              "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$hub_namespace/campusute-ai:pull" \
+              "$DOCKERHUB_USERNAME" "$DOCKERHUB_TOKEN"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish backend image
+        id: backend-image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image-tags.outputs.backend_tags }}
+          labels: |
+            org.opencontainers.image.title=CampusUTE backend
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.licenses=MIT
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build and publish AI service image
+        id: ai-image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./ai-service
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.image-tags.outputs.ai_tags }}
+          labels: |
+            org.opencontainers.image.title=CampusUTE AI service
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.licenses=MIT
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify release image tags match build digests
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          DOCKERHUB_ENABLED: ${{ steps.dockerhub-credentials.outputs.enabled }}
+          BACKEND_DIGEST: ${{ steps.backend-image.outputs.digest }}
+          AI_DIGEST: ${{ steps.ai-image.outputs.digest }}
+        shell: bash
+        run: |
+          owner_lc="$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          hub_namespace="nguyenson1710"
+          verify_digest() {
+            local reference="$1"
+            local expected="$2"
+            local observed
+            observed="sha256:$(docker buildx imagetools inspect "$reference" --raw | sha256sum | cut -d ' ' -f 1)"
+            if [[ "$observed" != "$expected" ]]; then
+              echo "Digest mismatch for $reference: expected $expected, got $observed" >&2
+              return 1
+            fi
+          }
+          for service in backend ai; do
+            if [[ "$service" == "backend" ]]; then expected="$BACKEND_DIGEST"; else expected="$AI_DIGEST"; fi
+            verify_digest "ghcr.io/$owner_lc/campusute-$service:$RELEASE_TAG" "$expected"
+            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+              verify_digest "docker.io/$hub_namespace/campusute-$service:$RELEASE_TAG" "$expected"
+            fi
+          done
 
   apk:
     name: Build APK + create release (tag only)
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    needs: images
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -111,3 +426,81 @@ jobs:
           files: "campusute-${{ github.ref_name }}.apk"
           generate_release_notes: true
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+
+  promote-latest:
+    name: Promote latest after successful release
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+    needs: [images, apk]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check optional Docker Hub credentials
+        id: dockerhub-credentials
+        shell: bash
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [[ -n "$DOCKERHUB_USERNAME" && -n "$DOCKERHUB_TOKEN" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          elif [[ -z "$DOCKERHUB_USERNAME" && -z "$DOCKERHUB_TOKEN" ]]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Configure both DOCKERHUB_USERNAME and DOCKERHUB_TOKEN, or leave both unset." >&2
+            exit 1
+          fi
+
+      - uses: docker/login-action@v3
+        name: Login to GitHub Container Registry
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Login to Docker Hub
+        if: steps.dockerhub-credentials.outputs.enabled == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Promote and verify stable image digests
+        env:
+          REPOSITORY_OWNER: ${{ github.repository_owner }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          DOCKERHUB_ENABLED: ${{ steps.dockerhub-credentials.outputs.enabled }}
+          BACKEND_DIGEST: ${{ needs.images.outputs.backend_digest }}
+          AI_DIGEST: ${{ needs.images.outputs.ai_digest }}
+        shell: bash
+        run: |
+          owner_lc="$(printf '%s' "$REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          hub_namespace="nguyenson1710"
+          verify_digest() {
+            local reference="$1"
+            local expected="$2"
+            local observed
+            observed="sha256:$(docker buildx imagetools inspect "$reference" --raw | sha256sum | cut -d ' ' -f 1)"
+            if [[ "$observed" != "$expected" ]]; then
+              echo "Digest mismatch for $reference: expected $expected, got $observed" >&2
+              return 1
+            fi
+          }
+          for service in backend ai; do
+            if [[ "$service" == "backend" ]]; then expected="$BACKEND_DIGEST"; else expected="$AI_DIGEST"; fi
+            ghcr_source="ghcr.io/$owner_lc/campusute-$service:$RELEASE_TAG"
+            ghcr_digest="ghcr.io/$owner_lc/campusute-$service@$expected"
+            ghcr_latest="ghcr.io/$owner_lc/campusute-$service:latest"
+            verify_digest "$ghcr_source" "$expected"
+            docker buildx imagetools create --prefer-index=false --tag "$ghcr_latest" "$ghcr_digest"
+            verify_digest "$ghcr_latest" "$expected"
+            if [[ "$DOCKERHUB_ENABLED" == "true" ]]; then
+              hub_source="docker.io/$hub_namespace/campusute-$service:$RELEASE_TAG"
+              hub_digest="docker.io/$hub_namespace/campusute-$service@$expected"
+              hub_latest="docker.io/$hub_namespace/campusute-$service:latest"
+              verify_digest "$hub_source" "$expected"
+              docker buildx imagetools create --prefer-index=false --tag "$hub_latest" "$hub_digest"
+              verify_digest "$hub_latest" "$expected"
+            fi
+          done
