@@ -35,7 +35,12 @@ import kotlin.test.assertTrue
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
-@TestPropertySource(properties = ["app.ai-chat-rate-limit-per-minute=2"])
+@TestPropertySource(
+    properties = [
+        "app.ai-chat-rate-limit-per-minute=2",
+        "app.demo-mode=true",
+    ],
+)
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class AiChatRateLimitTest {
 
@@ -56,6 +61,7 @@ class AiChatRateLimitTest {
             reg.add("spring.datasource.password", postgres::getPassword)
             reg.add("spring.data.redis.host", redis::getHost)
             reg.add("spring.data.redis.port") { redis.getMappedPort(6379) }
+            reg.add("app.jwt.secret") { "test-only-test-only-test-only-test-only" }
         }
     }
 

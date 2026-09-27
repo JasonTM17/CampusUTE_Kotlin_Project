@@ -33,7 +33,10 @@ import kotlin.test.assertTrue
  * - every chat turn writes an audit row naming the tools, never the prompt text
  * - the frozen snapshot must actually contain /api/v1/ai/chat, which the app calls
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = ["app.demo-mode=true"],
+)
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class AiChatGatewayTest {
@@ -49,6 +52,7 @@ class AiChatGatewayTest {
             reg.add("spring.datasource.url", postgres::getJdbcUrl)
             reg.add("spring.datasource.username", postgres::getUsername)
             reg.add("spring.datasource.password", postgres::getPassword)
+            reg.add("app.jwt.secret") { "test-only-test-only-test-only-test-only" }
         }
     }
 

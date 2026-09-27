@@ -32,7 +32,10 @@ import kotlin.test.assertTrue
  * - contract parity: the live springdoc document exposes the 3 paths added to
  *   the frozen snapshot (notes/{id} PUT+DELETE, ai/summarize) — drift fails CI.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = ["app.demo-mode=true"],
+)
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class AiSummarizeGatewayTest {
@@ -48,6 +51,7 @@ class AiSummarizeGatewayTest {
             reg.add("spring.datasource.url", postgres::getJdbcUrl)
             reg.add("spring.datasource.username", postgres::getUsername)
             reg.add("spring.datasource.password", postgres::getPassword)
+            reg.add("app.jwt.secret") { "test-only-test-only-test-only-test-only" }
         }
     }
 

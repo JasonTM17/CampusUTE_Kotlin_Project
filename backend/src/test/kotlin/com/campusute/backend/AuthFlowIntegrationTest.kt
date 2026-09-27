@@ -50,6 +50,7 @@ class AuthFlowIntegrationTest {
             reg.add("spring.datasource.url", postgres::getJdbcUrl)
             reg.add("spring.datasource.username", postgres::getUsername)
             reg.add("spring.datasource.password", postgres::getPassword)
+            reg.add("app.jwt.secret") { "test-only-test-only-test-only-test-only" }
         }
     }
 
