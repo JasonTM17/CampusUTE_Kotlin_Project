@@ -20,9 +20,8 @@ Kotlin · Jetpack Compose · Spring Boot · FastAPI + OpenAI Agents SDK · RAG �
 </div>
 
 > ✅ **Current Android release: [v1.1.0](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0).**
-> A backend-only `v1.1.1` security patch is being prepared for Docker Hub and
-> GitHub Packages; it is not published yet. The AI image and Android release
-> remain at `v1.1.0` until the patch is verified in both registries.
+> The backend-only `v1.1.1` image is published to Docker Hub and GitHub Packages.
+> The AI image and Android/GitHub release remain at `v1.1.0`.
 
 ## ✨ What is CampusUTE?
 
@@ -120,16 +119,16 @@ docker compose up -d                 # postgres+pgvector, redis, minio, backend,
 
 ## 📦 Published container images
 
-GitHub Packages are connected to this repository. The existing backend and AI
-images are at `v1.1.0`; the backend-only `v1.1.1` security patch is pending
-publication and digest verification in both registries. The deployment guide
-lists the currently verified image digests and shows how to start the full
-Compose stack using published images instead of local builds.
+GitHub Packages are connected to this repository. The backend `v1.1.1` image
+has the same verified manifest digest in both registries; `latest` points to
+that backend patch. The AI image remains at `v1.1.0`. The deployment guide
+lists the verified image digests and shows how to start the full Compose stack
+using published images instead of local builds.
 
-| Service | Docker Hub | GitHub Packages (GHCR) |
-|---|---|---|
-| Backend (`latest` → `v1.1.0`; `v1.1.1` pending) | [campusute-backend](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [campusute-backend](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) |
-| AI service (`v1.1.0`, `latest`) | [campusute-ai](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [campusute-ai](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) |
+| Service | Docker Hub | GitHub Packages (GHCR) | Verified manifest digest |
+|---|---|---|---|
+| Backend (`v1.1.1`, `latest`) | [campusute-backend](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [campusute-backend](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) | `sha256:74c38334e8a9e23c1ef8cfcf247cfb798a1e5fb3486ac69bcb75e25e591213c4` |
+| AI service (`v1.1.0`, `latest`) | [campusute-ai](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [campusute-ai](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) | `sha256:2cecfa4efd800ca9c5da04af373ba104b5e9865b9cc481c2233247209bbe5d6b` |
 
 See [Container images and deployment](docs/deployment/container-images.md) for
 version-pinned pull commands, Compose setup, package links, and image metadata.
