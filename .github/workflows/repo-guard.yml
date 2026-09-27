@@ -12,17 +12,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Sensitive-path ignore gate (plans/, .env, keystores)
+      - name: Sensitive-path ignore gate (plans, local tools, .env, keystores)
         run: |
-          git check-ignore -v plans/README.md .env local.properties release.jks
+          git check-ignore -v --no-index plans/README.md .env local.properties release.jks .agentkit/runtime.yaml .agents/README.md .codex/settings.json .claude/settings.local.json .cursor/local.json .gemini/local.json .grok/local.toml .omp/local.yml .opencode/local.json
+          git ls-files --error-unmatch .github/workflows/repo-guard.yml
           echo "ignore-gate: PASS"
 
       - name: Secret scan
         run: bash scripts/secret-scan.sh
 
+      - name: Secret scanner regression
+        run: bash scripts/secret-scan-regression.sh
+
       - name: Compose file validation
         run: |
-          AI_INGEST_TOKEN=dev-ingest-token docker compose -f docker-compose.yml config -q
+          AI_INGEST_TOKEN=dev-ingest-token JWT_SECRET=ci docker compose -f docker-compose.yml config -q
           echo "compose-config: PASS"
 
       - name: Markdown link sanity (repo-relative docs exist)

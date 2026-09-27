@@ -73,8 +73,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-campusute_dev}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-32-bytes-minimum!!}
-      APP_DEMO_MODE: ${APP_DEMO_MODE:-true}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set - copy .env.example to .env}
+      APP_DEMO_MODE: ${APP_DEMO_MODE:-false}
       AI_INGEST_TOKEN: ${AI_INGEST_TOKEN:?AI_INGEST_TOKEN must be set - copy .env.example to .env}
     ports:
       - "${BACKEND_PORT:-8080}:8080"

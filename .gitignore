@@ -1,6 +1,19 @@
 # ===== CampusUTE .gitignore =====
 # Sensitive / local-only (user requirement: plans & secrets NEVER committed)
 plans/
+
+# Local AgentKit/runtime tooling, plugin bundles and generated registries.
+# Keep explicit paths so public CI automation under .github/ stays tracked.
+.agentkit/
+.agents/
+.codex/
+.claude/
+.cursor/
+.gemini/
+.grok/
+.omp/
+.opencode/
+
 *.env
 .env
 .env.*

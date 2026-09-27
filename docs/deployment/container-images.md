@@ -6,15 +6,26 @@ Compose file.
 
 ## Current release
 
-The current published release is [`v1.1.0`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0),
+The current Android/GitHub release is [`v1.1.0`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0),
 built from commit [`fd0a1477a6964ce6b5542549cee3b3f731bf4ac8`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/commit/fd0a1477a6964ce6b5542549cee3b3f731bf4ac8).
-Both images target `linux/amd64`. Docker Hub and GHCR tags `v1.1.0` and
-`latest` resolve to the same manifest digest:
+The existing backend and AI images are at `v1.1.0`; both target `linux/amd64`.
+A backend-only `v1.1.1` patch that disables demo seeding by default is
+authorized, but registry publication and digest verification are still pending.
+Until it is published, use the current backend image only with
+`APP_DEMO_MODE=false` for direct runs. The table records verified current
+manifests and marks the planned patch as pending:
 
 | Service | Docker Hub | GitHub Packages | Manifest digest |
 |---|---|---|---|
-| Backend | [`nguyenson1710/campusute-backend`](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [`campusute-backend`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) | `sha256:a8610b03175b37253c874b676f86eb8c49379fbff2b72599bdd05692db6e7749` |
-| AI service | [`nguyenson1710/campusute-ai`](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [`campusute-ai`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) | `sha256:2cecfa4efd800ca9c5da04af373ba104b5e9865b9cc481c2233247209bbe5d6b` |
+| Backend (`v1.1.0`, `latest`) | [`nguyenson1710/campusute-backend`](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [`campusute-backend`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) | `sha256:a8610b03175b37253c874b676f86eb8c49379fbff2b72599bdd05692db6e7749` |
+| Backend patch (`v1.1.1`, pending) | [`nguyenson1710/campusute-backend`](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [`campusute-backend`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) | Pending registry publication |
+| AI service (`v1.1.0`, `latest`) | [`nguyenson1710/campusute-ai`](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [`campusute-ai`](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) | `sha256:2cecfa4efd800ca9c5da04af373ba104b5e9865b9cc481c2233247209bbe5d6b` |
+
+The historical backend `v1.1.0` digest is
+`sha256:a8610b03175b37253c874b676f86eb8c49379fbff2b72599bdd05692db6e7749`.
+That image defaults demo seeding on when run directly; pass
+`APP_DEMO_MODE=false` when using it. The published `v1.1.1` patch will remove
+the need for that direct-run override after its registries are verified.
 
 Docker Hub and GHCR are separate registries; authenticate to GHCR before pulling
 from it if your GitHub account requires authentication. The `latest` tag
@@ -29,6 +40,11 @@ docker pull ghcr.io/jasontm17/campusute-backend:v1.1.0
 docker pull ghcr.io/jasontm17/campusute-ai:v1.1.0
 ```
 
+The `v1.1.1` backend pull commands become available after publication is
+verified in both registries. The registry Compose overlay is already configured
+for that patch; until then, override `CAMPUSUTE_BACKEND_TAG=v1.1.0` and keep
+demo seeding disabled.
+
 ```bash
 docker pull docker.io/nguyenson1710/campusute-backend@sha256:a8610b03175b37253c874b676f86eb8c49379fbff2b72599bdd05692db6e7749
 docker pull docker.io/nguyenson1710/campusute-ai@sha256:2cecfa4efd800ca9c5da04af373ba104b5e9865b9cc481c2233247209bbe5d6b
@@ -39,12 +55,20 @@ docker pull docker.io/nguyenson1710/campusute-ai@sha256:2cecfa4efd800ca9c5da04af
 Use Docker Compose v2.24.4 or newer so the overlay can clear the base `build`
 settings. The base [`docker-compose.yml`](../../docker-compose.yml) builds backend and AI
 images from source. Add [`deploy/docker-compose.registry.yml`](../../deploy/docker-compose.registry.yml)
-to use the published release images instead. The overlay defaults to Docker
-Hub and pins `v1.1.0`; it keeps the existing database, Redis, MinIO, health
-dependencies, ports, and named data volumes from the base file.
+to use the published images instead. The overlay defaults to Docker Hub and
+pins backend `v1.1.1` plus AI `v1.1.0`; it keeps the existing database, Redis,
+MinIO, health dependencies, ports, and named data volumes from the base file.
 
 1. Copy `.env.example` to `.env` and set a unique `AI_INGEST_TOKEN` and
    `JWT_SECRET`. Keep `.env` local and private.
+   The published-image overlay sets demo seeding to `false` by default using
+   `CAMPUSUTE_DEMO_MODE`, independently of the local-development
+   `APP_DEMO_MODE` value in `.env.example`. For a disposable local demo only,
+   set `CAMPUSUTE_DEMO_MODE=true`; never enable it on a shared or internet-facing
+   deployment. Direct `docker run` users of the published backend `v1.1.0`
+   image must pass `APP_DEMO_MODE=false`. The backend `v1.1.1` patch is pending
+   publication; after its registry digests are verified, it will default demo
+   seeding off without an environment override.
 2. Pull and start the stack:
 
    ```bash
@@ -58,17 +82,26 @@ dependencies, ports, and named data volumes from the base file.
    - AI service: <http://localhost:8600/health> (bound to loopback by Compose)
    - Swagger UI: <http://localhost:8080/swagger-ui>
 
-To pull a different release, set `CAMPUSUTE_TAG` in `.env` to the published
-version. To use GHCR instead, set these values in `.env` before running the
-commands above:
+The registry overlay is configured for the planned backend `v1.1.1` patch and
+AI `v1.1.0`; until the backend patch is published, pull only the currently
+available `v1.1.0` backend and set `APP_DEMO_MODE=false` for direct runs. To
+select other published versions, set `CAMPUSUTE_BACKEND_TAG` and
+`CAMPUSUTE_AI_TAG` independently in `.env`. `CAMPUSUTE_TAG` remains a shared
+override when both services publish the same version. To use GHCR instead, set
+these values in `.env` before running the commands above:
 
 ```dotenv
 CAMPUSUTE_REGISTRY=ghcr.io/jasontm17
-CAMPUSUTE_TAG=v1.1.0
+CAMPUSUTE_BACKEND_TAG=v1.1.0
+CAMPUSUTE_AI_TAG=v1.1.0
 ```
 
-To make Compose use the exact v1.1.0 manifests regardless of tag movement, set
-the complete image references in `.env` instead:
+Change `CAMPUSUTE_BACKEND_TAG` to `v1.1.1` after the patch is published and
+verified in GHCR and Docker Hub.
+
+The planned v1.1.1 digest will be recorded here after both registries have been
+queried. For now, pin the existing v1.1.0 manifests shown above; the backend
+still requires `APP_DEMO_MODE=false` if run directly.
 
 ```dotenv
 CAMPUSUTE_BACKEND_IMAGE=docker.io/nguyenson1710/campusute-backend@sha256:a8610b03175b37253c874b676f86eb8c49379fbff2b72599bdd05692db6e7749
@@ -81,8 +114,15 @@ add `--volumes`/`-v` unless you intend to delete that local data.
 
 ## Publication and metadata
 
-The `v1.1.0` Docker Hub images are byte-for-byte manifest mirrors of the
-released GHCR images. The release workflow always publishes to GHCR and is
+The backend-only `v1.1.1` security patch is a container-package update, not a
+new Android/GitHub release. **Publication is pending:** the image will be built
+from a committed source revision with OCI source, revision, version, and title
+labels, then published once to both registries with an SBOM and BuildKit
+provenance. After verifying the registry manifests and labels, record the
+shared digest here and move `latest` to that digest. The AI image and APK stay
+at `v1.1.0`. The existing `v1.1.0` Docker Hub images are byte-for-byte
+manifest mirrors of the released GHCR images. The release workflow always
+publishes to GHCR and is
 configured to build once and publish the same image digest to Docker Hub when
 both of these repository Actions secrets are present:
 
@@ -128,8 +168,8 @@ manifests and reconcile the aliases explicitly. The workflow intentionally
 stops when it sees any existing version tag; it does not automatically overwrite
 a partial publication or roll back a registry that already accepted its image.
 
-Future tagged builds add OCI source/revision/version labels, an SBOM, and
-BuildKit provenance. The `v1.1.0` images predate those records, which cannot be
+The existing `v1.1.0` images predate OCI source/revision/version labels, SBOM,
+and BuildKit provenance, which cannot be
 added to an existing digest without changing the released artifact. A
 vulnerability-scan gate is not configured yet. Use the release tag and digest
 table above to identify the current images; do not infer a scan or signed

@@ -1,13 +1,17 @@
-# Compose override that uses the published v1.1.0 images instead of local builds.
-# Override CAMPUSUTE_REGISTRY and CAMPUSUTE_TAG to select another release, or
-# set the service-specific image variables to pin exact registry digests.
+# Compose override that uses the published images instead of local builds.
+# The backend defaults to the v1.1.1 demo-seeding safety patch; AI remains at
+# v1.1.0. Override CAMPUSUTE_REGISTRY and per-service tags to select versions.
 services:
   backend:
-    image: ${CAMPUSUTE_BACKEND_IMAGE:-${CAMPUSUTE_REGISTRY:-docker.io/nguyenson1710}/campusute-backend:${CAMPUSUTE_TAG:-v1.1.0}}
+    image: ${CAMPUSUTE_BACKEND_IMAGE:-${CAMPUSUTE_REGISTRY:-docker.io/nguyenson1710}/campusute-backend:${CAMPUSUTE_BACKEND_TAG:-${CAMPUSUTE_TAG:-v1.1.1}}}
     build: !reset null
     pull_policy: always
+    environment:
+      # Do not inherit APP_DEMO_MODE=true from a local-development .env file.
+      # Opt in only for disposable demos via CAMPUSUTE_DEMO_MODE=true.
+      APP_DEMO_MODE: ${CAMPUSUTE_DEMO_MODE:-false}
 
   ai-service:
-    image: ${CAMPUSUTE_AI_IMAGE:-${CAMPUSUTE_REGISTRY:-docker.io/nguyenson1710}/campusute-ai:${CAMPUSUTE_TAG:-v1.1.0}}
+    image: ${CAMPUSUTE_AI_IMAGE:-${CAMPUSUTE_REGISTRY:-docker.io/nguyenson1710}/campusute-ai:${CAMPUSUTE_AI_TAG:-${CAMPUSUTE_TAG:-v1.1.0}}}
     build: !reset null
     pull_policy: always

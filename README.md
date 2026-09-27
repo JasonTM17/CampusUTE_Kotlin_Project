@@ -19,10 +19,10 @@ Kotlin · Jetpack Compose · Spring Boot · FastAPI + OpenAI Agents SDK · RAG �
 
 </div>
 
-> ✅ **Current release: [v1.1.0](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0).**
-> The Android demo, screenshots, and released backend/AI container images are
-> linked below. The v1.1.0 Docker images are available from Docker Hub and
-> GitHub Container Registry for `linux/amd64`.
+> ✅ **Current Android release: [v1.1.0](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0).**
+> A backend-only `v1.1.1` security patch is being prepared for Docker Hub and
+> GitHub Packages; it is not published yet. The AI image and Android release
+> remain at `v1.1.0` until the patch is verified in both registries.
 
 ## ✨ What is CampusUTE?
 
@@ -77,6 +77,7 @@ Deep dives: [system-overview](docs/architecture/system-overview.md) ·
 [Chat UI design contract](docs/ai/chat-design.md) ·
 [App design contract + screen catalogue](docs/ai/app-design.md) ·
 [Threat model](docs/security/threat-model.md) ·
+[Repository privacy & publication](docs/security/repository-publication.md) ·
 [ADRs](docs/adr/) · [Database](docs/database/database-design.md)
 
 ## 📁 Project structure
@@ -109,8 +110,9 @@ docker compose up -d                 # postgres+pgvector, redis, minio, backend,
 
 - Backend API: http://localhost:8080/swagger-ui (OpenAPI: `/v3/api-docs`)
 - AI service health: http://localhost:8600/health
-- Android: open `apps/android` in Android Studio → run `app` (demo accounts
-  below; dev-only, synthetic data, disabled in release builds).
+- Android: open `apps/android` in Android Studio → run `app`. Synthetic demo
+  identities are seeded only for local development (`APP_DEMO_MODE=true`); the
+  published-image Compose overlay keeps demo seeding off by default.
 
 > AI works out of the box in **mock/replay mode** (no API key needed). Set
 > `OPENAI_API_KEY` in `.env` to enable live models — the key never enters the
@@ -118,40 +120,40 @@ docker compose up -d                 # postgres+pgvector, redis, minio, backend,
 
 ## 📦 Published container images
 
-Pull the released backend and AI service from either registry. The GitHub
-Packages are already connected to this repository; the deployment guide lists
-the exact release digests and shows how to start the full Compose stack using
-the published images instead of local builds.
+GitHub Packages are connected to this repository. The existing backend and AI
+images are at `v1.1.0`; the backend-only `v1.1.1` security patch is pending
+publication and digest verification in both registries. The deployment guide
+lists the currently verified image digests and shows how to start the full
+Compose stack using published images instead of local builds.
 
 | Service | Docker Hub | GitHub Packages (GHCR) |
 |---|---|---|
-| Backend | [campusute-backend](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [campusute-backend](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) |
-| AI service | [campusute-ai](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [campusute-ai](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) |
+| Backend (`latest` → `v1.1.0`; `v1.1.1` pending) | [campusute-backend](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [campusute-backend](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) |
+| AI service (`v1.1.0`, `latest`) | [campusute-ai](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [campusute-ai](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) |
 
 See [Container images and deployment](docs/deployment/container-images.md) for
 version-pinned pull commands, Compose setup, package links, and image metadata.
 
 ## 📸 Demo
 
-v1.1 UI — all ten catalogue screens (see
-[assets/design](assets/design/README.md) for the Stitch frames each screen was
-built from) inspected on the API-35 emulator against the live docker stack:
+This short tour and the screenshots below were captured from the published
+v1.1.0 APK on an isolated API-35 emulator on 2026-09-27. The home screen uses a
+generic synthetic demo identity; the timetable and notifications show their
+empty states. The AI screen shows prompt suggestions only, not a generated
+answer. See [assets/design](assets/design/README.md) for the Stitch design
+references.
 
-![CampusUTE demo flow — tasks](assets/demo/demo.gif)
+![CampusUTE v1.1.0 app tour: home, timetable, notifications, and AI assistant](assets/demo/demo.gif)
 
-| Home | Study tasks (offline-first, conflict resolution) |
+| Home dashboard | Weekly timetable |
 |---|---|
-| ![Home](assets/screenshots/home.png) | ![Study tasks](assets/screenshots/tasks.png) |
-| **Week timetable** | **Notifications with type filters** |
-| ![Timetable](assets/screenshots/timetable.png) | ![Notifications](assets/screenshots/notifications-filters.png) |
-| **Grades & coursework** | **Events registration** |
-| ![Grades](assets/screenshots/grades.png) | ![Events](assets/screenshots/events.png) |
-| **Notes** | **AI assistant (Academic Indigo) with citations** |
-| ![Notes](assets/screenshots/notes.png) | ![AI chat](assets/screenshots/ai-chat.png) |
+| ![CampusUTE home dashboard with synthetic demo data](assets/screenshots/home.png) | ![Weekly timetable empty state](assets/screenshots/timetable.png) |
+| **Notifications** | **AI assistant** |
+| ![Notifications with category filters and an empty inbox](assets/screenshots/notifications-filters.png) | ![AI assistant prompt suggestions](assets/screenshots/ai-chat.png) |
 
-Dev-only demo accounts (synthetic seed data — see `backend` seeder):
-`student@demo.campusute.vn` / `Demo#Student1`,
-`lecturer@demo.campusute.vn` / `Demo#Lecturer1`.
+Demo credentials are intentionally omitted from this public README. Synthetic
+demo identities and seed data are for isolated local or test environments;
+never use them in a shared or production environment.
 
 ## 🗺 Roadmap
 
@@ -174,6 +176,10 @@ Dev-only demo accounts (synthetic seed data — see `backend` seeder):
   an adapter interface (`UniversitySSOAuthProvider`), not a fake integration.
 - Secrets live in `.env` (git-ignored) / Android Keystore — never in the repo
   or the APK; CI runs a secret scan on every push.
+- Local agent tools, session state, and `plans/` stay ignored; required CI and
+  release workflows remain under `.github/workflows/`. See the
+  [repository publication guide](docs/security/repository-publication.md) for
+  the exact checks and the limits of ignore rules.
 - The AI layer treats retrieved documents as **untrusted data** (prompt
   injection defense) and filters retrieval by permission **before** the LLM
   sees any context. See the [threat model](docs/security/threat-model.md).

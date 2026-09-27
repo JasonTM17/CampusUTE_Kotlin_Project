@@ -40,10 +40,10 @@ springdoc:
     path: /swagger-ui.html
 
 app:
-  demo-mode: ${APP_DEMO_MODE:true}
+  demo-mode: ${APP_DEMO_MODE:false}
   jwt:
     # 32+ bytes required by HS256; real value injected via env, never committed
-    secret: ${JWT_SECRET:dev-only-secret-change-me-32-bytes-minimum!!}
+    secret: ${JWT_SECRET:}
     access-ttl-minutes: ${JWT_ACCESS_TTL_MINUTES:15}
   refresh-ttl-days: ${REFRESH_TTL_DAYS:14}
   login-rate-limit-per-minute: ${LOGIN_RATE_LIMIT:10}

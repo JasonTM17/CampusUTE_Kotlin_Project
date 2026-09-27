@@ -31,7 +31,10 @@ import kotlin.test.assertTrue
  * - error envelope carries code/message/traceId and data=null
  * Envelopes are read as maps to keep Jackson generic-type handling simple.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = ["app.demo-mode=true"],
+)
 @Testcontainers
 @TestMethodOrder(MethodOrderer.OrderAnnotation::class)
 class AuthFlowIntegrationTest {

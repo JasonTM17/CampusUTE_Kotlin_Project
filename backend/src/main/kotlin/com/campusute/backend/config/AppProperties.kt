@@ -4,7 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties(prefix = "app")
 data class AppProperties(
-    val demoMode: Boolean = true,
+    val demoMode: Boolean = false,
     val jwt: JwtProperties = JwtProperties(),
     val refreshTtlDays: Long = 14,
     val loginRateLimitPerMinute: Long = 10,
