@@ -22,7 +22,10 @@ jobs:
       - name: AI security gates + eval on live stack (leak / citations / injection)
         working-directory: ai-service
         run: |
-          AI_INGEST_TOKEN=dev-ingest-token BACKEND_PORT=18080 docker compose -f ../docker-compose.yml up -d --build --wait postgres redis backend ai-service
+          # The disposable CI stack needs synthetic users and a per-run signing key for its end-to-end fixtures.
+          JWT_SECRET="$(python -c 'import secrets; print(secrets.token_hex(32))')" \
+            APP_DEMO_MODE=true AI_INGEST_TOKEN=dev-ingest-token BACKEND_PORT=18080 \
+            docker compose -f ../docker-compose.yml up -d --build --wait postgres redis backend ai-service
           pip install -r requirements.txt
           echo "waiting for backend + ai-service..."
           for i in $(seq 1 60); do
