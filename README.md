@@ -1,193 +1,174 @@
-<div align="center">
-
-<img src="assets/branding/logo-mark.svg" width="96" alt="CampusUTE logo"/>
-
 # CampusUTE
 
-**AI-Powered Smart Digital Campus Platform — HCMUTE**
+**Student services for HCMUTE, with an offline-ready timetable**
 
-Kotlin · Jetpack Compose · Spring Boot · FastAPI + OpenAI Agents SDK · RAG · pgvector · Offline-First
+**Technology:** Kotlin, Jetpack Compose, Spring Boot, FastAPI, OpenAI Agents
+SDK, PostgreSQL, pgvector, and Redis.
 
-[![CI](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/actions/workflows/repo-guard.yml/badge.svg)](./.github/workflows/repo-guard.yml)
-[![Release](https://img.shields.io/github/v/release/JasonTM17/CampusUTE_Kotlin_Project)](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Docker-green)](#getting-started)
-
-[Latest release](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/latest) ·
+[Android release v1.1.0](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0) ·
+[All releases](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases) ·
 [GitHub Packages](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs) ·
-[Docker Hub images](docs/deployment/container-images.md)
+[Container deployment](docs/deployment/container-images.md) ·
+[CI workflow](.github/workflows/repo-guard.yml) ·
+[MIT License](LICENSE)
 
-</div>
+> **Release status:** The Android application and GitHub release are at
+> `v1.1.0`. The backend-only container patch is `v1.1.1`; the AI container
+> remains at `v1.1.0`.
 
-> ✅ **Current Android release: [v1.1.0](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/releases/tag/v1.1.0).**
-> The backend-only `v1.1.1` image is published to Docker Hub and GitHub Packages.
-> The AI image and Android/GitHub release remain at `v1.1.0`.
+## Overview
 
-## ✨ What is CampusUTE?
+CampusUTE combines an Android application with services for academic
+scheduling, campus information, and student support. The published Android
+release includes an offline-ready timetable backed by locally saved schedule
+data.
 
-One app for nearly everything a HCMUTE student does on campus — backed by a
-production-minded platform:
+- **Timetable:** Saved schedule data is available from the local Room database
+  when the device is offline.
+- **Campus assistant:** Routes questions across university information and can
+  retrieve regulation material with source citations. The backend enforces
+  access to personal data.
+- **Notes:** Notes are remote-first. AI summaries are proposals that users can
+  accept or dismiss before changing a note.
+- **Service security:** The backend applies role- and attribute-based access
+  control, refresh-token rotation, password hashing, and audit logging.
 
-- 📅 **Offline-first timetable & exam schedule** — Room DB is the single source
-  of truth; works in elevators, weak Wi-Fi, backend outages.
-- 🤖 **Agentic AI Campus Assistant** — router + 8 specialist agents, tool
-  calling re-verified by the backend (LLM is *never* the security boundary),
-  RAG over university regulations with **mandatory citations** (document,
-  page, excerpt).
-- 🧠 **Smart Study Planner, Notes + AI** (summarize / flashcards / quiz —
-  propose-only, user confirms). Notes CRUD is remote-first (`/api/v1/notes`);
-  the offline-first Room SSOT applies to the schedule/timetable (offline notes
-  sync is on the roadmap).
-- ✅ **Secure QR attendance** — short-lived rotating tokens signed server-side,
-  anti-replay nonce; nothing trusted from the client.
-- 📊 **Event-driven analytics** — Transactional Outbox → Kafka → ClickHouse
-  (architecture ready; SCOPED OUT of v1.0 — core runs fine without it).
-- 🔐 **RBAC (6 roles) + ABAC**, JWT with refresh rotation, Argon2, audit logs,
-  rate limiting, threat model documented.
-
-## 🏗 Architecture (system context)
+## Architecture
 
 ```mermaid
 flowchart LR
     subgraph Client
-        A["Android App<br/>Kotlin + Compose<br/>Room SSOT · WorkManager"]
+        A["Android app<br/>Kotlin + Compose<br/>Room · WorkManager"]
     end
-    subgraph Platform["Monorepo — docker compose (core services)"]
-        B["core-api<br/>Kotlin · Spring Boot<br/>REST /api/v1 · SSE"]
-        C["ai-service<br/>Python · FastAPI<br/>OpenAI Agents SDK"]
+    subgraph Platform["Docker Compose core services"]
+        B["Backend API<br/>Kotlin · Spring Boot<br/>REST /api/v1 · SSE"]
+        C["AI service<br/>Python · FastAPI<br/>OpenAI Agents SDK"]
         D[("PostgreSQL<br/>+ pgvector")]
         E[("Redis")]
         F[("MinIO<br/>S3-compatible")]
-        G{{Kafka}} --> H[("ClickHouse")] --> I[Grafana]
+    end
+    subgraph OptionalAnalytics["Planned analytics path"]
+        G{{Kafka}} -.-> H[("ClickHouse")] -.-> I[Grafana]
     end
     A -->|"HTTPS / JWT"| B
     B --> C
     B --> D
     B --> E
-    C -->|"vector + hybrid search"| D
+    C -->|"vector and hybrid search"| D
     B --> F
     B -.->|"Transactional Outbox"| G
 ```
 
-Deep dives: [system-overview](docs/architecture/system-overview.md) ·
-[Android architecture](docs/architecture/android-architecture.md) ·
-[Backend architecture](docs/architecture/backend-architecture.md) ·
-[RAG](docs/ai/rag-architecture.md) · [Agents](docs/ai/agent-architecture.md) ·
-[Chat UI design contract](docs/ai/chat-design.md) ·
-[App design contract + screen catalogue](docs/ai/app-design.md) ·
-[Threat model](docs/security/threat-model.md) ·
-[Repository privacy & publication](docs/security/repository-publication.md) ·
-[ADRs](docs/adr/) · [Database](docs/database/database-design.md)
+The analytics components are planned and are not required by the core stack.
+Read the [system overview](docs/architecture/system-overview.md),
+[Android architecture](docs/architecture/android-architecture.md),
+[backend architecture](docs/architecture/backend-architecture.md),
+[RAG design](docs/ai/rag-architecture.md),
+[agent design](docs/ai/agent-architecture.md),
+[chat design contract](docs/ai/chat-design.md),
+[app screen catalogue](docs/ai/app-design.md),
+[security threat model](docs/security/threat-model.md),
+[database design](docs/database/database-design.md), and
+[architecture decisions](docs/adr/) for details.
 
-## 📁 Project structure
+## Repository guide
 
-```
-CampusUTE_Kotlin_Project/
-├── apps/android/          # Kotlin + Compose app (multi-module, offline-first)
-├── backend/               # Kotlin Spring Boot modular monolith (/api/v1)
-├── ai-service/            # Python FastAPI + OpenAI Agents SDK (RAG, tools)
-├── packages/api-contracts/  # Frozen OpenAPI snapshot shared by 3 codebases
-├── deploy/                # published-image Compose overlay (base compose at repo root)
-├── database/              # migrations are in backend (Flyway); seeds & diagrams
-├── docs/                  # architecture, ai, security, adr, demo
-├── assets/                # demo GIF, diagrams, screenshots (regenerable)
-├── scripts/               # dev scripts (secret-scan, seed, demo, diagrams)
-└── .github/workflows/     # repo-guard CI, android/backend/ai CI, release (tag-gated)
-```
+| Path | Purpose |
+|---|---|
+| [`apps/android`](apps/android/) | Kotlin and Jetpack Compose application |
+| [`backend`](backend/) | Spring Boot API and academic services |
+| [`ai-service`](ai-service/) | FastAPI assistant, retrieval, and tools |
+| [`packages/api-contracts`](packages/api-contracts/) | Shared API contract snapshots |
+| [`deploy`](deploy/) | Published-image Compose configuration |
+| [`docs`](docs/) | Architecture, AI, security, database, and deployment guides |
+| [`.github/workflows`](.github/workflows/) | CI and release workflows |
 
-## 🚀 Getting started
+## Getting started
 
-Prerequisites: **Docker**, **JDK 17/21/24** (Gradle 8.14 — *not* JDK 26),
-**Android Studio** (SDK 34+).
+### Prerequisites
+
+- Docker Engine with Docker Compose
+- JDK 17, 21, or 24
+- Android Studio with Android SDK 34 or later
+
+Clone the repository and create a local environment file from the example.
 
 ```bash
 git clone https://github.com/JasonTM17/CampusUTE_Kotlin_Project.git
 cd CampusUTE_Kotlin_Project
-cp .env.example .env                 # fill in only what you need; never commit it
-docker compose up -d                 # postgres+pgvector, redis, minio, backend, ai
+cp .env.example .env
 ```
 
-- Backend API: http://localhost:8080/swagger-ui (OpenAPI: `/v3/api-docs`)
-- AI service health: http://localhost:8600/health
-- Android: open `apps/android` in Android Studio → run `app`. Synthetic demo
-  identities are seeded only for local development (`APP_DEMO_MODE=true`); the
-  published-image Compose overlay keeps demo seeding off by default.
+In PowerShell, use `Copy-Item .env.example .env` for the copy step. Set only
+the environment values required for the services you intend to run, then start
+the development stack:
 
-> AI works out of the box in **mock/replay mode** (no API key needed). Set
-> `OPENAI_API_KEY` in `.env` to enable live models — the key never enters the
-> APK.
+```bash
+docker compose up -d
+```
 
-## 📦 Published container images
+- Backend API and OpenAPI UI: `http://localhost:8080/swagger-ui`
+- AI service health: `http://localhost:8600/health`
+- Android app: open `apps/android` in Android Studio and run the `app`
+  configuration.
 
-GitHub Packages are connected to this repository. The backend `v1.1.1` image
-has the same verified manifest digest in both registries; `latest` points to
-that backend patch. The AI image remains at `v1.1.0`. The deployment guide
-lists the verified image digests and shows how to start the full Compose stack
-using published images instead of local builds.
+For synthetic local demo identities, explicitly set `APP_DEMO_MODE=true` in
+your local environment. Published-image configuration keeps demo seeding off
+by default. The AI service starts in mock/replay mode; set `OPENAI_API_KEY` in
+the local `.env` file to use live models. Never put the key in the APK or commit
+the `.env` file.
 
-| Service | Docker Hub | GitHub Packages (GHCR) | Verified manifest digest |
+## Published container images
+
+The backend `v1.1.1` image and its `latest` alias resolve to the same verified
+manifest digest in Docker Hub and GitHub Container Registry (GHCR). The AI
+image remains at `v1.1.0`. Use the [container deployment guide](docs/deployment/container-images.md)
+for pinned pull commands, registry Compose setup, and image metadata.
+
+| Service and tags | Docker Hub | GitHub Packages | Manifest digest |
 |---|---|---|---|
-| Backend (`v1.1.1`, `latest`) | [campusute-backend](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [campusute-backend](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) | `sha256:74c38334e8a9e23c1ef8cfcf247cfb798a1e5fb3486ac69bcb75e25e591213c4` |
-| AI service (`v1.1.0`, `latest`) | [campusute-ai](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [campusute-ai](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) | `sha256:2cecfa4efd800ca9c5da04af373ba104b5e9865b9cc481c2233247209bbe5d6b` |
+| Backend `v1.1.1`, `latest` | [campusute-backend](https://hub.docker.com/r/nguyenson1710/campusute-backend) | [campusute-backend](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-backend) | `sha256:74c38334e8a9e23c1ef8cfcf247cfb798a1e5fb3486ac69bcb75e25e591213c4` |
+| AI service `v1.1.0`, `latest` | [campusute-ai](https://hub.docker.com/r/nguyenson1710/campusute-ai) | [campusute-ai](https://github.com/JasonTM17/CampusUTE_Kotlin_Project/pkgs/container/campusute-ai) | `sha256:2cecfa4efd800ca9c5da04af373ba104b5e9865b9cc481c2233247209bbe5d6b` |
 
-See [Container images and deployment](docs/deployment/container-images.md) for
-version-pinned pull commands, Compose setup, package links, and image metadata.
+## App screenshots and GIF
 
-## 📸 Demo
+The following media was captured from the published `v1.1.0` APK on an isolated
+API 35 emulator on 2026-09-27. The home screen uses a generic synthetic demo
+identity. The timetable and notifications show empty states. The AI screen
+shows prompt suggestions, not a generated answer.
 
-This short tour and the screenshots below were captured from the published
-v1.1.0 APK on an isolated API-35 emulator on 2026-09-27. The home screen uses a
-generic synthetic demo identity; the timetable and notifications show their
-empty states. The AI screen shows prompt suggestions only, not a generated
-answer. See [assets/design](assets/design/README.md) for the Stitch design
-references.
-
-![CampusUTE v1.1.0 app tour: home, timetable, notifications, and AI assistant](assets/demo/demo.gif)
+![CampusUTE v1.1.0 app tour showing the home screen, timetable, notifications, and AI assistant](assets/demo/demo.gif)
 
 | Home dashboard | Weekly timetable |
 |---|---|
 | ![CampusUTE home dashboard with synthetic demo data](assets/screenshots/home.png) | ![Weekly timetable empty state](assets/screenshots/timetable.png) |
-| **Notifications** | **AI assistant** |
+
+| Notifications | AI assistant |
+|---|---|
 | ![Notifications with category filters and an empty inbox](assets/screenshots/notifications-filters.png) | ![AI assistant prompt suggestions](assets/screenshots/ai-chat.png) |
 
-Demo credentials are intentionally omitted from this public README. Synthetic
-demo identities and seed data are for isolated local or test environments;
-never use them in a shared or production environment.
+The [design catalogue](assets/design/README.md) contains the Stitch design
+references and screen-state notes.
 
-## 🗺 Roadmap
+## Security and privacy
 
-| Phase | Scope | Status |
-|---|---|---|
-| 0 | Environment gate, bootstrap, CI guard | ✅ DONE |
-| 1 | Backend platform + Android core + **contract freeze** | ✅ DONE |
-| 2 | Vertical slice: Student Schedule E2E (offline) | ✅ DONE |
-| 3 | Generic sync engine (delta, pending queue, optimistic) | ✅ DONE |
-| 4 | Academic core (assignment, grade/GPA, QR attendance, events) | ✅ DONE |
-| 5 | AI core: agents + RAG + citations | ✅ DONE |
-| 6 | 8 agents + eval harness + notes AI | ✅ DONE |
-| 7 | Secondary modules + Kafka/ClickHouse analytics | 🗂 SCOPED OUT of v1.0 — roadmap tương lai |
-| 8 | Hardening, docs, demo GIF, release v1.0.0 | ✅ DONE |
-| 9 | UI catalogue closeout: study-tasks screen, Room fail-loud, design-guard CI, device walk, release v1.1.0 | ✅ DONE |
+- Seed data is synthetic. Do not use demo identities in a shared or production
+  environment.
+- Keep local credentials in `.env` or the Android Keystore. The repository
+  includes a secret scan in CI; see the [repository publication guide](docs/security/repository-publication.md)
+  for the public-tree and scanner limits.
+- Local agent tools, session data, and `plans/` are ignored by Git. Required
+  workflows remain under `.github/workflows/`.
+- Retrieved documents are treated as untrusted input. See the
+  [security threat model](docs/security/threat-model.md) for the documented
+  prompt-injection and authorization boundaries.
 
-## 🔐 Security & privacy
+## Contributing
 
-- No real HCMUTE personal data — all seed data is synthetic. University SSO is
-  an adapter interface (`UniversitySSOAuthProvider`), not a fake integration.
-- Secrets live in `.env` (git-ignored) / Android Keystore — never in the repo
-  or the APK; CI runs a secret scan on every push.
-- Local agent tools, session state, and `plans/` stay ignored; required CI and
-  release workflows remain under `.github/workflows/`. See the
-  [repository publication guide](docs/security/repository-publication.md) for
-  the exact checks and the limits of ignore rules.
-- The AI layer treats retrieved documents as **untrusted data** (prompt
-  injection defense) and filters retrieval by permission **before** the LLM
-  sees any context. See the [threat model](docs/security/threat-model.md).
+CampusUTE is a course project. Use Conventional Commits and keep changes scoped
+to the feature being updated. Do not commit credentials, generated local state,
+or private agent-tool directories.
 
-## 🤝 Contributing
+## License
 
-Course project — single mainline. Conventional Commits only; every commit must
-build; push after each milestone; `plans/` and secrets are never committed.
-
-## 📄 License
-
-[MIT](LICENSE)
+Released under the [MIT License](LICENSE).
